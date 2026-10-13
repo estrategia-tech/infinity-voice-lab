@@ -1,0 +1,87 @@
+
+name: Infinity Voice Lab v0.6.1 Manual Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: "Choose validation or deployment"
+        required: true
+        type: choice
+        default: validate
+        options:
+          - validate
+          - deploy
+
+permissions:
+  contents: read
+
+concurrency:
+  group: infinity-voice-lab-v061-manual
+  cancel-in-progress: false
+
+jobs:
+  lab:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout isolated laboratory branch
+        uses: actions/checkout@v4
+        with:
+          ref: lab/voice-v0.6-security
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Verify isolated Worker target
+        run: |
+          node --input-type=module -e '
+            import fs from "node:fs";
+            const c = JSON.parse(
+              fs.readFileSync("wrangler.lab.jsonc", "utf8")
+            );
+            if (
+              c.name !== "infinity-voice-api-lab-v061" ||
+              c.main !== "worker-v0.6.1-candidate.mjs" ||
+              !c.durable_objects?.bindings?.some(
+                b => b.name === "LAB_SESSIONS" &&
+                     b.class_name === "LabSessionCoordinator"
+              ) ||
+              !c.migrations?.some(
+                m => m.new_sqlite_classes?.includes(
+                  "LabSessionCoordinator"
+                )
+              )
+            ) {
+              throw Error("Unexpected lab deployment configuration");
+            }
+          '
+
+      - name: Validate syntax
+        run: node --check worker-v0.6.1-candidate.mjs
+
+      - name: Run automated tests
+        run: node --test test-v0.6.1.mjs
+
+      - name: Install Wrangler
+        run: npm install --no-save --no-package-lock wrangler@4
+
+      - name: Validate Cloudflare bundle
+        run: |
+          npx wrangler deploy \
+            --config wrangler.lab.jsonc \
+            --dry-run
+
+      - name: Deploy isolated lab Worker
+        if: inputs.operation == 'deploy'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          npx wrangler deploy --config wrangler.lab.jsonc
