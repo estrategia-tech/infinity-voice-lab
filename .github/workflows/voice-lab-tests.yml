@@ -13,7 +13,7 @@ permissions:
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
 
     steps:
       - name: Checkout repository
@@ -27,5 +27,15 @@ jobs:
       - name: Check JavaScript syntax
         run: node --check worker-v0.6.1-candidate.mjs
 
-      - name: Run v0.6.1 automated tests
+      - name: Run automated tests
         run: node --test test-v0.6.1.mjs
+
+      - name: Install Wrangler
+        run: npm install --no-save --no-package-lock wrangler@4
+
+      - name: Validate Cloudflare bundle
+        run: |
+          npx wrangler deploy \
+            --config wrangler.lab.jsonc \
+            --dry-run \
+            --outdir .wrangler-dryrun
