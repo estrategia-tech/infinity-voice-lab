@@ -1,0 +1,34 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import worker,{LabSessionCoordinator} from './worker-v0.6.1-candidate.mjs';
+const secret='1234567890abcdefghijklmnopqrstuvwxyz1234567890';
+const store=new Map();
+const ctx={storage:{async get(k){return structuredClone(store.get(k));},async put(k,v){store.set(k,structuredClone(v));}},async blockConcurrencyWhile(fn){return await fn();}};
+const coordinator=new LabSessionCoordinator(ctx);
+const env={LAB_ACCESS_TOKEN:secret,LAB_SESSIONS:{idFromName:n=>n,get:()=>({fetch:(r,opts)=>coordinator.fetch(new Request(r,opts))})}};
+const base='https://lab.example';
+async function call(path,method='GET',token=secret,environment=env,headers={}) {
+  const h={...headers};if(token!==null)h.Authorization='Bearer '+token;
+  const res=await worker.fetch(new Request(base+path,{method,headers:h}),environment);
+  return {res,body:await res.json()};
+}
+test('health and version',async()=>{const x=await call('/health');assert.equal(x.res.status,200);assert.equal(x.body.version,'0.6.1-candidate');assert.equal(x.body.openai_sessions_enabled,false);});
+test('health method restriction',async()=>assert.equal((await call('/health','POST')).res.status,405));
+test('missing token denied',async()=>assert.equal((await call('/lab/start','POST',null)).res.status,401));
+test('incorrect token denied',async()=>assert.equal((await call('/lab/start','POST','wrong')).res.status,401));
+test('short secret fails closed',async()=>assert.equal((await call('/lab/start','POST',secret,{...env,LAB_ACCESS_TOKEN:'short'})).res.status,503));
+test('missing storage fails closed',async()=>assert.equal((await call('/lab/start','POST',secret,{LAB_ACCESS_TOKEN:secret})).res.status,503));
+test('realtime remains blocked',async()=>assert.equal((await call('/openai/realtime','POST')).res.status,403));
+test('legacy session blocked',async()=>assert.equal((await call('/session','POST')).res.status,403));
+test('unknown route is 404',async()=>assert.equal((await call('/unknown')).res.status,404));
+test('OPTIONS denied',async()=>assert.equal((await call('/lab/start','OPTIONS')).res.status,405));
+test('CORS rejects unknown origin',async()=>assert.equal((await call('/health','GET',null,env,{Origin:'https://evil.example'})).res.headers.get('Access-Control-Allow-Origin'),null));
+test('CORS allows exact Pages origin',async()=>assert.equal((await call('/health','GET',null,env,{Origin:'https://estrategia-tech.github.io'})).res.headers.get('Access-Control-Allow-Origin'),'https://estrategia-tech.github.io'));
+test('session starts with 180 seconds',async()=>{const x=await call('/lab/start','POST');assert.equal(x.res.status,201);assert.equal(x.body.max_duration_seconds,180);assert.equal(x.body.openai_sessions_enabled,false);});
+test('only one session active',async()=>assert.equal((await call('/lab/start','POST')).res.status,409));
+test('status shows active lease',async()=>{const x=await call('/lab/status');assert.equal(x.body.active,true);assert.ok(x.body.remaining_seconds<=180);});
+test('session can be revoked',async()=>{assert.equal((await call('/lab/end','POST')).res.status,200);assert.equal((await call('/lab/status')).body.active,false);});
+test('cannot end absent session',async()=>assert.equal((await call('/lab/end','POST')).res.status,404));
+test('session expires server-side',async()=>{const original=Date.now;try{let now=original();Date.now=()=>now;assert.equal((await call('/lab/start','POST')).res.status,201);now+=181000;assert.equal((await call('/lab/status')).body.active,false);}finally{Date.now=original;}});
+test('start limit prevents repeated restarts',async()=>{store.clear();let success=0;for(let i=0;i<10;i++){const a=await call('/lab/start','POST');assert.equal(a.res.status,201);success++;await call('/lab/end','POST');}assert.equal(success,10);assert.equal((await call('/lab/start','POST')).res.status,429);});
+test('rate limit prevents excessive requests',async()=>{store.clear();for(let i=0;i<30;i++)assert.equal((await call('/lab/status')).res.status,200);assert.equal((await call('/lab/status')).res.status,429);});

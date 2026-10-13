@@ -1,23 +1,15 @@
-# Infinity Voice Lab v0.6.0 - candidato de seguridad
+# Infinity Voice Lab v0.6.1 — candidate, NO DESPLEGAR
 
-No desplegar todavía. Esta versión es un candidato local independiente, sin OpenAI ni llamadas telefónicas.
+- This candidate adds a **server-side 180-second lease** using Cloudflare Durable Objects, with one active lab session globally, explicit end, 10 starts/hour and 30 requests/minute.
+- **No OpenAI integration**. `/session`, `/sessions`, `/openai`, `/realtime` remain blocked. The lease is a test record, **not** a Realtime session or access token.
+- Protected `/lab/start` (POST), `/lab/status` (GET), `/lab/end` (POST) use `Authorization: Bearer <LAB_ACCESS_TOKEN>`; **never place this secret in the GitHub Pages frontend**.
+- Requires a separate Cloudflare Worker deployment, a Durable Object binding and migration, and a Cloudflare plan that supports Durable Objects. `wrangler.lab.jsonc` deliberately names a **separate candidate Worker**, not the current v0.5.1.
+- Tests mock storage and do not constitute live Cloudflare deployment validation; storage concurrency, pricing, and deployment compatibility must be verified in a separate lab before any rollout.
+- **Security boundary:** a 180-second lease does not automatically terminate a future OpenAI Realtime call. Before enabling audio, implement server-side session lifecycle and enforced disconnect; ensure any ephemeral client credential lifetime and Realtime session duration are enforced independently.
+- The LAB_ACCESS_TOKEN is operator-only. Future browser access requires separate identity, short-lived scoped credentials and server-side verification. No CORS preflight is enabled yet.
 
-## Pruebas
+## Validate locally
+`node --check worker-v0.6.1-candidate.mjs && node --test test-v0.6.1.mjs`
 
-`node test.mjs`
-
-## Cambios respecto de v0.5.1
-
-- `GET /health` devuelve la versión candidata.
-- `GET /security` exige `Authorization: Bearer <LAB_ACCESS_TOKEN>` y un secreto de al menos 32 caracteres. **Cambia el encabezado respecto a v0.5.1 (`X-Lab-Token`)**.
-- Los endpoints de sesiones y OpenAI continúan deshabilitados (403).
-- Métodos no permitidos y rutas desconocidas devuelven 405 y 404.
-- Restringe CORS a GitHub Pages, sin permitir preflight hasta diseñar la autenticación del navegador.
-
-## Pendientes antes de voz real
-
-- Autenticación de usuarios (no exponer LAB_ACCESS_TOKEN en GitHub Pages).
-- Sesiones efímeras firmadas con vencimiento, revocación y límites de 3 minutos.
-- Rate limiting real mediante almacenamiento/servicio adecuado; no está implementado en este candidato.
-- Revisión de privacidad, consentimiento, costos y límites de gasto.
-- Pruebas de despliegue en Worker de ensayo separado antes de producción.
+## GitHub Actions
+Copy `.github/workflows/voice-lab-v061.yml` into the existing lab branch. Do not merge to `main` or deploy to the existing Worker.
