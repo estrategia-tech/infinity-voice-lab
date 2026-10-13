@@ -6,8 +6,8 @@
   "durable_objects": {
     "bindings": [
       {
-        "name": "VOICE_SESSION",
-        "class_name": "VoiceSession"
+        "name": "LAB_SESSIONS",
+        "class_name": "LabSessionCoordinator"
       }
     ]
   },
@@ -15,7 +15,7 @@
     {
       "tag": "v1",
       "new_sqlite_classes": [
-        "VoiceSession"
+        "LabSessionCoordinator"
       ]
     }
   ]
