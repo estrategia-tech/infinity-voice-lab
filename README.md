@@ -1,19 +1,23 @@
-# Infinity Voice · Demo móvil v0.2
+# Infinity Voice Lab v0.6.0 - candidato de seguridad
 
-## Estado
-Demo de TEXTO exclusivamente. Funciona en navegador móvil mediante archivos estáticos, sin OpenAI, sin llamadas, sin micrófono, sin claves, sin base de datos y sin conexión a Infinity Hub.
+No desplegar todavía. Esta versión es un candidato local independiente, sin OpenAI ni llamadas telefónicas.
 
-## Publicación desde Android
-1. Crear un repositorio NUEVO en GitHub, independiente del repositorio de Infinity Hub.
-2. Subir el contenido de esta carpeta a la raíz del repositorio, manteniendo `site/` y `.github/workflows/pages.yml`.
-3. En GitHub > Settings > Pages > Build and deployment, elegir **GitHub Actions**.
-4. Ejecutar el workflow `Publicar demo estática` si no inicia automáticamente.
-5. Abrir la URL que GitHub Pages indique. **GitHub Pages es un sitio público** incluso cuando el repositorio sea privado en muchos planes; por ello NO hay claves, números personales ni datos reales en este demo.
+## Pruebas
 
-La publicación NO se ha realizado. GitHub Pages puede requerir permisos/plan y configuración adicionales. Alternativamente, se puede subir `site/` a un servicio de hosting estático.
+`node test.mjs`
 
-## Próxima fase
-Para voz real se necesita un backend separado con autenticación, generación de tokens efímeros, límites de consumo, protección antiabuso y API OpenAI. NO insertar OPENAI_API_KEY en `site/` ni en el repositorio público. Validar precios, saldo y modelo antes de activarlo. No usar el número corporativo de Infinity Living ni producción.
+## Cambios respecto de v0.5.1
 
-## Pruebas de alcance
-El demo usa JavaScript del navegador y no solicita permisos ni envía datos por red. Límite de 180 segundos, flujo de calificación, salida por no contacto y devolución sin programar llamadas.
+- `GET /health` devuelve la versión candidata.
+- `GET /security` exige `Authorization: Bearer <LAB_ACCESS_TOKEN>` y un secreto de al menos 32 caracteres. **Cambia el encabezado respecto a v0.5.1 (`X-Lab-Token`)**.
+- Los endpoints de sesiones y OpenAI continúan deshabilitados (403).
+- Métodos no permitidos y rutas desconocidas devuelven 405 y 404.
+- Restringe CORS a GitHub Pages, sin permitir preflight hasta diseñar la autenticación del navegador.
+
+## Pendientes antes de voz real
+
+- Autenticación de usuarios (no exponer LAB_ACCESS_TOKEN en GitHub Pages).
+- Sesiones efímeras firmadas con vencimiento, revocación y límites de 3 minutos.
+- Rate limiting real mediante almacenamiento/servicio adecuado; no está implementado en este candidato.
+- Revisión de privacidad, consentimiento, costos y límites de gasto.
+- Pruebas de despliegue en Worker de ensayo separado antes de producción.
