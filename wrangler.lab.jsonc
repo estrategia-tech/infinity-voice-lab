@@ -1,0 +1,22 @@
+
+{
+  "name": "infinity-voice-api-lab-v061",
+  "main": "worker-v0.6.1-candidate.mjs",
+  "compatibility_date": "2026-10-12",
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "VOICE_SESSION",
+        "class_name": "VoiceSession"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": [
+        "VoiceSession"
+      ]
+    }
+  ]
+}
