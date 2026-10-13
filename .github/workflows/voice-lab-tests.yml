@@ -1,5 +1,5 @@
 
-name: Infinity Voice Lab Tests
+name: Infinity Voice Lab v0.6.1 Tests
 
 on:
   push:
@@ -25,7 +25,7 @@ jobs:
           node-version: "22"
 
       - name: Check JavaScript syntax
-        run: node --check worker-v0.6-candidate.js
+        run: node --check worker-v0.6.1-candidate.mjs
 
-      - name: Run automated tests
-        run: node --test test.mjs
+      - name: Run v0.6.1 automated tests
+        run: node --test test-v0.6.1.mjs
