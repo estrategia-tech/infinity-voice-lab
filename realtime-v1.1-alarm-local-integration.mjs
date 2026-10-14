@@ -22,4 +22,14 @@ if(phase==="bind"){
  }
  assert.equal(result.data.binding?.status,"mock_terminated");
  console.log("PASS: real DO alarm fires after Wrangler restart, mock termination only");
+}else if(phase==="permanent-failure"){
+ let result;
+ for(let i=0;i<35;i++){
+  result=await call("status");
+  if(result.data.binding?.status==="mock_termination_failed")break;
+  await new Promise(r=>setTimeout(r,1000));
+ }
+ assert.equal(result.data.binding?.status,"mock_termination_failed");
+ assert.equal(result.data.binding?.mockAttempts,2);
+ console.log("PASS: real local DO retains permanent mock hangup failure after bounded retries");
 }else throw Error("unknown phase");
