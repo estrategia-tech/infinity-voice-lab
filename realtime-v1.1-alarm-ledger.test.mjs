@@ -28,3 +28,16 @@ test("rejects duplicate and invalid bindings",async()=>{
  assert.equal((await l.post("/internal/bind",data)).status,200);
  assert.equal((await l.post("/internal/bind",data)).status,409);
 });
+
+test("explicit mock alarm calls coordinator and records mock-only result",async()=>{
+ const m=new Map();let scheduled;
+ const storage={get:async k=>m.get(k),put:async(k,v)=>m.set(k,v),setAlarm:async v=>{scheduled=v}};
+ const l=new AlarmLabLedger({storage},{MOCK_ALARM_TERMINATION:true});
+ const expiresAt=Date.now()+60000;
+ const response=await l.fetch(new Request("https://internal.invalid/internal/bind",{method:"POST",
+  headers:{"content-type":"application/json"},
+  body:JSON.stringify({reservationId:id,callId:"rtc_12345678",expiresAt})}));
+ assert.equal(response.status,200);assert.equal(scheduled,expiresAt);
+ await l.alarm();
+ assert.equal((await storage.get("binding")).status,"mock_terminated");
+});
