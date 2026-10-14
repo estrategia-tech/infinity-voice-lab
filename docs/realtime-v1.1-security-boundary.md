@@ -16,3 +16,8 @@ The public candidate broker exposes only GET `/health` and a permanently disable
 - The primary reservation DO now schedules its own expiry alarm when a call is bound. That alarm only marks `expired_unterminated`; it does not contact OpenAI or release capacity. The separate historical alarm mock remains isolated; its `mock_terminated` status does not release a real reservation.
 - Current reservation expiry and alarm-scheduling failure are fail-closed: neither automatically frees concurrency. A stuck reservation requires audited reconciliation, not manual blind release.
 - Do not activate real sessions until end-to-end binding, termination, reconciliation, authenticated operator controls and billing limits have been validated.
+
+## Provider termination ownership preflight
+`safeTerminateBoundCall` is an offline-only strict wrapper: it checks the private reservation ledger for an exact reservationId/callId match and acceptable state **before** the hangup adapter may run. A missing ledger, mismatch, or invalid state fails closed without touching the provider. Tests use an injected synthetic transport.
+
+**Remaining race:** the status preflight and the eventual provider hangup are not an atomic operation. Before paid calls, implement an atomic claim/lease in the same Durable Object (or equivalent serialization), an idempotency policy, and a retry/reconciliation procedure. Never expose the low-level `terminateAndRelease` adapter directly to a client.
