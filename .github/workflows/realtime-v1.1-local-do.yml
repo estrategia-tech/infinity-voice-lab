@@ -62,3 +62,13 @@ jobs:
           trap 'kill $pid 2>/dev/null || true' EXIT
           for i in {1..40}; do if curl -fsS http://127.0.0.1:8797/health >/dev/null; then break; fi; sleep 2; done
           TEST_BASE_URL=http://127.0.0.1:8797 node realtime-v1.1-local-integration.mjs bound-release
+      - name: Verify real local Durable Object reconciliation status
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/infinity-voice-v11-status
+          npx wrangler dev --local --config wrangler.realtime-v11-local.jsonc --port 8798 --persist-to /tmp/infinity-voice-v11-status > /tmp/v11-wrangler-status.log 2>&1 &
+          pid=$!
+          trap 'kill $pid 2>/dev/null || true' EXIT
+          for i in {1..40}; do if curl -fsS http://127.0.0.1:8798/health >/dev/null; then break; fi; sleep 2; done
+          TEST_BASE_URL=http://127.0.0.1:8798 node realtime-v1.1-local-integration.mjs reconciliation-status
