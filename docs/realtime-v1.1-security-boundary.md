@@ -13,6 +13,6 @@ The public candidate broker exposes only GET `/health` and a permanently disable
 - The synthetic local `x-local-test` header is not a production authorization control.
 - A token comparison cannot stop a malicious or compromised trusted Worker from falsely asserting termination.
 - Production capability must be stored in Cloudflare secrets, never source, browser, GitHub workflow logs, or client response.
-- The isolated alarm mock uses a separate DO; its `mock_terminated` status does not release a real reservation.
-- Current reservation expiry is fail-closed: it does not automatically free concurrency. A stuck reservation requires audited reconciliation, not manual blind release.
+- The primary reservation DO now schedules its own expiry alarm when a call is bound. That alarm only marks `expired_unterminated`; it does not contact OpenAI or release capacity. The separate historical alarm mock remains isolated; its `mock_terminated` status does not release a real reservation.
+- Current reservation expiry and alarm-scheduling failure are fail-closed: neither automatically frees concurrency. A stuck reservation requires audited reconciliation, not manual blind release.
 - Do not activate real sessions until end-to-end binding, termination, reconciliation, authenticated operator controls and billing limits have been validated.
