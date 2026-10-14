@@ -21,3 +21,10 @@ The public candidate broker exposes only GET `/health` and a permanently disable
 `safeTerminateBoundCall` is an offline-only strict wrapper: it checks the private reservation ledger for an exact reservationId/callId match and acceptable state **before** the hangup adapter may run. A missing ledger, mismatch, or invalid state fails closed without touching the provider. Tests use an injected synthetic transport.
 
 **Remaining race:** the status preflight and the eventual provider hangup are not an atomic operation. Before paid calls, implement an atomic claim/lease in the same Durable Object (or equivalent serialization), an idempotency policy, and a retry/reconciliation procedure. Never expose the low-level `terminateAndRelease` adapter directly to a client.
+
+## Atomic termination claim (offline candidate)
+`/internal/claim-termination` atomically checks the exact bound call and acquires a single-use claim ID within the reservation Durable Object. It requires the internal release capability. Concurrent claims fail with `termination_already_claimed`. The trusted `terminateClaimedCall` orchestrator invokes the injected provider adapter only after obtaining the claim and then calls `/internal/finish-termination`.
+
+When the provider does not acknowledge termination, `finish-termination` marks `termination_uncertain` and retains capacity. If the coordinator crashes after claiming, the reservation remains in `termination_claimed` and capacity is **not** automatically released. Both states require operator review; they are not evidence of a stopped provider call.
+
+**Remaining controls before paid use:** an authenticated, auditable recovery workflow for stuck claims; idempotent handling of retries; evidence-backed provider termination; secret provisioning and end-to-end operator authorization. The older `/internal/release` and low-level termination adapter remain available for offline compatibility and must not be wired to public routes.
