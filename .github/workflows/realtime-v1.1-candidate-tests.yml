@@ -15,6 +15,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Verify public broker rejects internal and local routes
+        run: node --test realtime-v1.1-public-boundary.test.mjs
       - name: Test disabled Realtime broker
         run: node --test realtime-v1.1-broker.test.mjs
       - name: Test session ledger candidate
