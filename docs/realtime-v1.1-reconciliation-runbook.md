@@ -25,3 +25,6 @@ Antes de solicitar autorización del usuario: verificar el funcionamiento y pers
 La suite `realtime-v1.1-local-do.yml` crea una reserva, vincula un `rtc_*` sintético, reinicia Wrangler con el mismo directorio persistente y espera hasta 160 segundos para verificar que la alarma del **mismo** Durable Object marca `expired_unterminated`. Después comprueba que una nueva reserva sigue bloqueada (HTTP 429). Esta prueba no simula una desconexión real del proveedor.
 
 La validación es distinta de la suite histórica `realtime-v1.1-alarm-local.yml`, que conserva los escenarios aislados de alarmas simuladas.
+
+## Diagnóstico autoritativo (nuevo)
+`reconcilePrimaryLedger` consulta exclusivamente el registro principal con su alarma nativa, y clasifica `pending`, `expired_unverified`, `expired_unterminated`, `alarm_schedule_failed`, `expired_unbound` y estados desconocidos. Ningún resultado implica que el proveedor terminó ni autoriza una liberación. `reconcileLabState` permanece como comparador histórico de dos registros para investigar divergencias del simulador.
