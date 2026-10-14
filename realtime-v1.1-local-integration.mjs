@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-const base="http://127.0.0.1:8791";
+const base=process.env.TEST_BASE_URL || "http://127.0.0.1:8791";
 const phase=process.argv[2];
 const reserve=async()=>{const r=await fetch(base+"/__local/reserve",{method:"POST",headers:{"x-local-test":"infinity-voice-v11"}});return {status:r.status,data:await r.json()}};
 const health=await fetch(base+"/health");assert.equal(health.status,200);assert.equal((await health.json()).openai_enabled,false);
