@@ -35,6 +35,21 @@ if(phase==="initial"){
  const first=await send();assert.equal(first.status,200);assert.equal(first.data.mock,true);
  const second=await send();assert.equal(second.status,429);
  console.log("PASS: real local DO, auth, SDP, offline mock and concurrency");
+}else if(phase==="alarm-persisted"){
+ const status=await fetch(base+"/__local/status",{method:"POST",headers:{"x-local-test":"infinity-voice-v11"}});
+ assert.equal(status.status,200);
+ const reservations=(await status.json()).reservations;
+ assert.equal(reservations.length,1);
+ assert.equal(reservations[0].callId,"rtc_12345678");
+ assert.equal(reservations[0].status,"expired_unterminated");
+ assert.equal(reservations[0].expired,true);
+ assert.equal((await reserve()).status,429);
+ console.log("PASS: same-DO alarm survives restart and never frees unresolved call");
+}else if(phase==="alarm-initial"){
+ const first=await reserve();assert.equal(first.status,200);
+ const r=await fetch(base+"/__local/bind",{method:"POST",headers:{"x-local-test":"infinity-voice-v11","content-type":"application/json"},body:JSON.stringify({reservationId:first.data.reservationId,callId:"rtc_12345678"})});
+ assert.equal(r.status,200);
+ console.log("PASS: bound call persisted; waiting for same-DO expiry alarm");
 }else if(phase==="reconciliation-status"){
  const first=await reserve();assert.equal(first.status,200);
  const status=async()=>{
