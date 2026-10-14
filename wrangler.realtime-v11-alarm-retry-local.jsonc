@@ -1,0 +1,8 @@
+{
+ "name":"infinity-voice-v11-alarm-retry-local-only",
+ "main":"realtime-v1.1-alarm-local-harness.mjs",
+ "compatibility_date":"2026-10-12",
+ "vars":{"MOCK_ALARM_TERMINATION":true,"MOCK_ALARM_FAIL_FIRST":true},
+ "durable_objects":{"bindings":[{"name":"ALARM_LEDGER","class_name":"AlarmLabLedger"}]},
+ "migrations":[{"tag":"v1","new_sqlite_classes":["AlarmLabLedger"]}]
+}
