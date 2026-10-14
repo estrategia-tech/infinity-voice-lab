@@ -7,9 +7,23 @@ export class LabSessionLedger {
   constructor(state, env) { this.state=state; this.env=env; }
   async fetch(request) {
     const url=new URL(request.url);
-    if (url.pathname!=="/internal/reserve" || request.method!=="POST")
+    if (!["/internal/reserve","/internal/release"].includes(url.pathname) || request.method!=="POST")
       return Response.json({error:"not_found"},{status:404});
     // This is internal-only: the public broker must never expose this endpoint.
+    if(url.pathname==="/internal/release"){
+      let data;
+      try{data=await request.json()}catch{return Response.json({error:"invalid_request"},{status:400})}
+      if(typeof data?.reservationId!=="string"||!/^[-a-f0-9]{36}$/i.test(data.reservationId))
+       return Response.json({error:"invalid_reservation_id"},{status:400});
+      return this.state.storage.transaction(async txn=>{
+        const sessions=(await txn.get("sessions"))||{};
+        if(!Object.hasOwn(sessions,data.reservationId))
+         return Response.json({error:"reservation_not_found"},{status:404});
+        delete sessions[data.reservationId];
+        await txn.put("sessions",sessions);
+        return Response.json({released:true});
+      });
+    }
     const limits={maxConcurrent:1,maxSessionsPerDay:3,maxSecondsPerSession:120};
     const now=Date.now();
     const day=new Date(now).toISOString().slice(0,10);
