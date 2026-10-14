@@ -1,0 +1,237 @@
+
+<!doctype html>
+<html lang="es-MX">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>Infinity Voice Lab v1.0</title>
+<style>
+:root{font-family:system-ui,sans-serif;color:#e9edf5;background:#0d1422}
+*{box-sizing:border-box}
+body{margin:0;padding:20px}
+main{max-width:540px;margin:auto;padding:25px;background:#142035;border:1px solid #30445d;border-radius:22px}
+h1{font-size:30px}
+p,small{color:#c3d0df;line-height:1.5}
+label{display:block;margin:20px 0 8px}
+input{width:100%;padding:14px;background:#0e192b;color:white;border:1px solid #46637e;border-radius:10px}
+button{padding:14px;margin:8px 5px 8px 0;border:0;border-radius:12px;background:#d7c3a0;color:#162238;font-weight:bold}
+button:disabled{opacity:.45}
+.output{padding:15px;background:#0e192b;border-radius:12px;min-height:65px;white-space:pre-wrap}
+#status{color:#d7c3a0}
+</style>
+</head>
+<body>
+<main>
+<p>INFINITY LIVING · LABORATORIO INDEPENDIENTE</p>
+<h1>Infinity Voice v1.0</h1>
+<p>Prueba aislada de voz y conexión autenticada.</p>
+
+<p id="status">Desconectado</p>
+
+<label for="token">Token del laboratorio</label>
+<input id="token" type="password" autocomplete="off"
+autocapitalize="off" spellcheck="false"
+placeholder="LAB_ACCESS_TOKEN">
+
+<button id="connect">Probar conexión</button>
+<button id="disconnect" disabled>Desconectar</button>
+
+<hr>
+
+<button id="talk" disabled>🎙️ Hablar</button>
+<button id="stop" disabled>Detener</button>
+<button id="audio">🔊 Probar audio</button>
+
+<h3>Escuché</h3>
+<div id="heard" class="output">Sin mensajes todavía.</div>
+
+<h3>Respuesta</h3>
+<div id="answer" class="output">Esperando conexión.</div>
+
+<small>
+El token permanece únicamente en la memoria de esta pestaña.
+No se guarda en GitHub, cookies ni almacenamiento local.
+No utilices información real de clientes durante las pruebas.
+</small>
+</main>
+
+<script>
+(()=>{
+"use strict";
+
+const URL_API =
+"https://infinity-voice-v09-lab.estrategia-a81.workers.dev/api/chat";
+
+const $ = id => document.getElementById(id);
+const status = $("status");
+const tokenInput = $("token");
+const connect = $("connect");
+const disconnect = $("disconnect");
+const talk = $("talk");
+const stop = $("stop");
+const audio = $("audio");
+const heard = $("heard");
+const answer = $("answer");
+
+const Recognition =
+window.SpeechRecognition || window.webkitSpeechRecognition;
+
+let token = "";
+let connected = false;
+let busy = false;
+let listening = false;
+let recognition = null;
+
+function update(){
+ connect.disabled = busy;
+ disconnect.disabled = !token;
+ talk.disabled = !connected || busy || listening || !Recognition;
+ stop.disabled = !listening;
+}
+
+function speak(text){
+ if(!window.speechSynthesis)return;
+ speechSynthesis.cancel();
+ const voice = new SpeechSynthesisUtterance(text);
+ voice.lang = "es-MX";
+ voice.rate = .96;
+ speechSynthesis.speak(voice);
+}
+
+async function request(message){
+ if(!token)return;
+
+ busy = true;
+ update();
+ status.textContent = "Consultando Worker...";
+
+ try{
+  const controller = new AbortController();
+  const timeout = setTimeout(()=>controller.abort(),15000);
+
+  let response;
+  try{
+   response = await fetch(URL_API,{
+    method:"POST",
+    mode:"cors",
+    cache:"no-store",
+    credentials:"omit",
+    referrerPolicy:"no-referrer",
+    headers:{
+     "Content-Type":"application/json",
+     "Authorization":"Bearer "+token
+    },
+    body:JSON.stringify({message}),
+    signal:controller.signal
+   });
+  }finally{
+   clearTimeout(timeout);
+  }
+
+  const data = await response.json();
+
+  if(response.status===403 && data.error==="ai_disabled"){
+   connected=true;
+   status.textContent="Conectado · IA desactivada";
+   answer.textContent=
+   "Autenticación correcta. OpenAI permanece desactivado.";
+  }else if(response.status===401){
+   connected=false;
+   status.textContent="Token incorrecto";
+   answer.textContent="401 unauthorized";
+  }else if(response.ok && typeof data.answer==="string"){
+   connected=true;
+   status.textContent="Respuesta recibida";
+   answer.textContent=data.answer;
+   speak(data.answer);
+  }else{
+   status.textContent="Solicitud rechazada";
+   answer.textContent=
+   "HTTP "+response.status+" · "+(data.error||"Error");
+  }
+ }catch{
+  status.textContent="Error de conexión";
+  answer.textContent="No fue posible contactar al Worker.";
+ }finally{
+  busy=false;
+  update();
+ }
+}
+
+connect.onclick=()=>{
+ const value=tokenInput.value.trim();
+
+ if(value.length<32){
+  status.textContent="Token inválido o incompleto";
+  return;
+ }
+
+ token=value;
+ tokenInput.value="";
+ request("Prueba de conexión");
+};
+
+disconnect.onclick=()=>{
+ token="";
+ tokenInput.value="";
+ connected=false;
+ try{recognition?.abort()}catch{}
+ speechSynthesis?.cancel();
+ listening=false;
+ status.textContent="Desconectado";
+ answer.textContent="Sesión cerrada";
+ update();
+};
+
+talk.onclick=()=>{
+ if(!Recognition || !connected || busy)return;
+
+ recognition=new Recognition();
+ recognition.lang="es-MX";
+ recognition.interimResults=false;
+ recognition.continuous=false;
+
+ recognition.onstart=()=>{
+  listening=true;
+  status.textContent="Escuchando...";
+  update();
+ };
+
+ recognition.onresult=e=>{
+  const message=e.results[0][0].transcript;
+  heard.textContent=message;
+  request(message);
+ };
+
+ recognition.onerror=e=>{
+  status.textContent="Micrófono: "+e.error;
+ };
+
+ recognition.onend=()=>{
+  listening=false;
+  update();
+ };
+
+ recognition.start();
+};
+
+stop.onclick=()=>{
+ try{recognition?.stop()}catch{}
+};
+
+audio.onclick=()=>{
+ speak("Hola, esta es una prueba de Infinity Voice.");
+};
+
+window.addEventListener("pagehide",()=>{
+ token="";
+ tokenInput.value="";
+ connected=false;
+});
+
+update();
+})();
+</script>
+</body>
+</html>
