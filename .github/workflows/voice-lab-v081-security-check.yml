@@ -1,0 +1,31 @@
+
+name: Infinity Voice Lab v0.8.1 Security Check
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validate syntax
+        run: |
+          node --check infinity-voice-v081-security.mjs
+          node --check test-voice-v081-security.mjs
+
+      - name: Verify security gates
+        run: node --test test-voice-v081-security.mjs
