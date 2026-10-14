@@ -126,3 +126,21 @@ test("alarm scheduling failure remains occupied and flagged",async()=>{
  assert.equal(status.reservations[0].status,"alarm_schedule_failed");
  assert.equal((await post("/internal/reserve")).status,429);
 });
+
+test("expired unbound reservation cannot be bound or silently reused",async()=>{
+ const map=new Map();
+ const storage={get:async k=>map.get(k),put:async(k,v)=>map.set(k,structuredClone(v)),
+  transaction:async fn=>fn(storage),setAlarm:async()=>{}};
+ const ledger=new LabSessionLedger({storage},{});
+ const post=async(path,data)=>ledger.fetch(new Request("https://internal.invalid"+path,{
+  method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(data??{})
+ }));
+ const first=await (await post("/internal/reserve")).json();
+ const sessions=map.get("sessions");
+ sessions[first.reservationId].expiresAt=Date.now()-1;
+ map.set("sessions",sessions);
+ const bind=await post("/internal/bind",{reservationId:first.reservationId,callId:"rtc_12345678"});
+ assert.equal(bind.status,409);
+ assert.equal((await bind.json()).error,"reservation_expired");
+ assert.equal((await post("/internal/reserve")).status,429);
+});
