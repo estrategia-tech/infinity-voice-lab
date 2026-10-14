@@ -1,0 +1,44 @@
+name: Infinity Voice v1.1 Real Durable Object Local Test
+on:
+  push:
+    branches: [lab/realtime-v1-1-candidate]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  durable-object:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install isolated Wrangler
+        run: npm install --no-save --no-package-lock wrangler@4
+      - name: Verify local Durable Object persistence
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/infinity-voice-v11-do
+          npx wrangler dev --local --config wrangler.realtime-v11-local.jsonc --port 8791 --persist-to /tmp/infinity-voice-v11-do > /tmp/v11-wrangler.log 2>&1 &
+          pid=$!
+          trap 'kill $pid 2>/dev/null || true' EXIT
+          for i in {1..40}; do if curl -fsS http://127.0.0.1:8791/health >/dev/null; then break; fi; sleep 2; done
+          node realtime-v1.1-local-integration.mjs initial
+          kill "$pid" || true
+          wait "$pid" || true
+          npx wrangler dev --local --config wrangler.realtime-v11-local.jsonc --port 8791 --persist-to /tmp/infinity-voice-v11-do > /tmp/v11-wrangler-restart.log 2>&1 &
+          pid=$!
+          for i in {1..40}; do if curl -fsS http://127.0.0.1:8791/health >/dev/null; then break; fi; sleep 2; done
+          node realtime-v1.1-local-integration.mjs persisted
+      - name: Verify parallel reservation atomicity
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/infinity-voice-v11-parallel
+          npx wrangler dev --local --config wrangler.realtime-v11-local.jsonc --port 8791 --persist-to /tmp/infinity-voice-v11-parallel > /tmp/v11-wrangler-parallel.log 2>&1 &
+          pid=$!
+          trap 'kill $pid 2>/dev/null || true' EXIT
+          for i in {1..40}; do if curl -fsS http://127.0.0.1:8791/health >/dev/null; then break; fi; sleep 2; done
+          node realtime-v1.1-local-integration.mjs parallel
