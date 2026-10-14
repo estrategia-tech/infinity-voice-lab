@@ -1,0 +1,7 @@
+{
+  "name": "infinity-voice-realtime-v11-local-only",
+  "main": "realtime-v1.1-local-harness.mjs",
+  "compatibility_date": "2026-10-12",
+  "durable_objects": {"bindings":[{"name":"LAB_LEDGER","class_name":"LabSessionLedger"}]},
+  "migrations":[{"tag":"v1","new_sqlite_classes":["LabSessionLedger"]}]
+}
