@@ -43,3 +43,14 @@ jobs:
           for i in {1..35}; do if curl -fsS http://127.0.0.1:8795/health >/dev/null; then break; fi; sleep 1; done
           TEST_BASE_URL=http://127.0.0.1:8795 node realtime-v1.1-alarm-local-integration.mjs bind
           TEST_BASE_URL=http://127.0.0.1:8795 node realtime-v1.1-alarm-local-integration.mjs restart
+      - name: Verify permanent provider failure stays unresolved
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/infinity-voice-alarm-failure
+          npx wrangler dev --local --config wrangler.realtime-v11-alarm-failure-local.jsonc --port 8796 --persist-to /tmp/infinity-voice-alarm-failure > /tmp/alarm-failure.log 2>&1 &
+          pid=$!
+          trap 'kill $pid 2>/dev/null || true' EXIT
+          for i in {1..35}; do if curl -fsS http://127.0.0.1:8796/health >/dev/null; then break; fi; sleep 1; done
+          TEST_BASE_URL=http://127.0.0.1:8796 node realtime-v1.1-alarm-local-integration.mjs bind
+          TEST_BASE_URL=http://127.0.0.1:8796 node realtime-v1.1-alarm-local-integration.mjs permanent-failure
