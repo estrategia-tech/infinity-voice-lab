@@ -23,6 +23,8 @@ jobs:
         run: node --test realtime-v1.1-admission.test.mjs
       - name: Test isolated lab access guard
         run: node --test realtime-v1.1-access.test.mjs
+      - name: Verify provider hangup adapter is fail-closed
+        run: node --test realtime-v1.1-hangup.test.mjs
       - name: Verify end-to-end offline unified WebRTC rehearsal
         run: node --test realtime-v1.1-unified-rehearsal.test.mjs
       - name: Verify offline unified WebRTC SDP preparation
