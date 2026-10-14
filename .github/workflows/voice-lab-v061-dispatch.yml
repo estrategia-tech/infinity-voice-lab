@@ -84,12 +84,17 @@ jobs:
         run: |
           test -n "$CLOUDFLARE_API_TOKEN"
           test -n "$CLOUDFLARE_ACCOUNT_ID"
-          
-node -e '
-  const token = process.env.CLOUDFLARE_API_TOKEN;
-  if (!token || /[\r\n\x00-\x1F\x7F]/.test(token) || token !== token.trim()) {
-    throw new Error("Cloudflare API token contains invalid whitespace or control characters");
-  }
-  console.log("Cloudflare token format: OK");
-'
+
+          node -e '
+            const token = process.env.CLOUDFLARE_API_TOKEN;
+            if (
+              !token ||
+              /[\r\n\x00-\x1F\x7F]/.test(token) ||
+              token !== token.trim()
+            ) {
+              throw new Error("Invalid Cloudflare token format");
+            }
+            console.log("Cloudflare token format: OK");
+          '
+
           npx wrangler deploy --config wrangler.lab.jsonc
