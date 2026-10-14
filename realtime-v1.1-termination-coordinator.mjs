@@ -11,7 +11,7 @@ export async function terminateAndRelease({callId,reservationId,apiKey,transport
  if(!ended.ok)return {ok:false,status:ended.status,error:ended.error,releaseAttempted:false};
  try{
   const response=await ledgerStub.fetch(new Request("https://internal.invalid/internal/release",{
-   method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({reservationId})
+   method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({reservationId,callId,providerAcknowledged:true})
   }));
   if(!response.ok)return {ok:false,status:503,error:"release_unconfirmed",providerAcknowledged:true};
   const data=await response.json();
