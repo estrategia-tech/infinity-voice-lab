@@ -20,3 +20,8 @@
 Antes de solicitar autorización del usuario: verificar el funcionamiento y persistencia de la alarma nativa del mismo Durable Object en CI (la programación ocurre después de guardar la vinculación, por lo que un fallo queda marcado y bloquea nuevas admisiones), instalar un proceso de desconexión real desde servidor, verificar el estado de la llamada con evidencia del proveedor cuando esté disponible, controlar secretos y permisos, comprobar cierre en fallos y contar con supervisión del gasto. El ACK HTTP de hangup no es una garantía contractual de facturación. Ninguna conciliación debe liberar capacidad basándose únicamente en el reloj o en una simulación.
 
 **Prohibido:** exponer endpoints `/__local/*`, reutilizar credenciales sintéticas en producción, modificar Hub/WhatsApp, iniciar sesiones pagadas sin autorización.
+
+## Prueba de persistencia nativa agregada a CI
+La suite `realtime-v1.1-local-do.yml` crea una reserva, vincula un `rtc_*` sintético, reinicia Wrangler con el mismo directorio persistente y espera hasta 160 segundos para verificar que la alarma del **mismo** Durable Object marca `expired_unterminated`. Después comprueba que una nueva reserva sigue bloqueada (HTTP 429). Esta prueba no simula una desconexión real del proveedor.
+
+La validación es distinta de la suite histórica `realtime-v1.1-alarm-local.yml`, que conserva los escenarios aislados de alarmas simuladas.
