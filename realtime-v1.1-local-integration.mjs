@@ -12,7 +12,10 @@ if(phase==="initial"){
 
  const first=await reserve();assert.equal(first.status,200);
  const blocked=await reserve();assert.equal(blocked.status,429);assert.equal(blocked.data.error,"concurrency_limit");
- console.log("PASS: local Durable Object enforces concurrent limit");
+ const released=await fetch(base+"/__local/release",{method:"POST",headers:{"x-local-test":"infinity-voice-v11","Content-Type":"application/json"},body:JSON.stringify({reservationId:first.data.reservationId})});
+ assert.equal(released.status,200);
+ const next=await reserve();assert.equal(next.status,200);
+ console.log("PASS: local Durable Object enforces concurrency and release");
 }else if(phase==="persisted"){
  const blocked=await reserve();assert.equal(blocked.status,429);assert.equal(blocked.data.error,"concurrency_limit");
  console.log("PASS: reservation persists across Wrangler restart");
