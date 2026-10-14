@@ -87,5 +87,13 @@ jobs:
           npx wrangler dev --local --config wrangler.realtime-v11-local.jsonc --port 8799 --persist-to /tmp/infinity-voice-v11-native-alarm > /tmp/v11-native-alarm-restart.log 2>&1 &
           pid=$!
           for i in {1..40}; do if curl -fsS http://127.0.0.1:8799/health >/dev/null; then break; fi; sleep 2; done
-          sleep 125
-          TEST_BASE_URL=http://127.0.0.1:8799 node realtime-v1.1-local-integration.mjs alarm-persisted
+          observed=0
+          for i in {1..80}; do
+            if TEST_BASE_URL=http://127.0.0.1:8799 node realtime-v1.1-local-integration.mjs alarm-persisted > /tmp/v11-alarm-result.log 2>&1; then
+              observed=1
+              break
+            fi
+            sleep 2
+          done
+          cat /tmp/v11-alarm-result.log
+          test "$observed" -eq 1
