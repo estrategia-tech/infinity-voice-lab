@@ -1,0 +1,155 @@
+
+name: Infinity Voice Lab v0.6.1 Session Test
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: infinity-voice-lab-v061-session-test
+  cancel-in-progress: false
+
+jobs:
+  session-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Test protected laboratory sessions
+        env:
+          LAB_ACCESS_TOKEN: ${{ secrets.LAB_ACCESS_TOKEN }}
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from "node:assert/strict";
+
+          const base =
+            "https://infinity-voice-api-lab-v061.estrategia-a81.workers.dev";
+
+          const token = process.env.LAB_ACCESS_TOKEN;
+
+          assert.ok(
+            token &&
+            token.length >= 32 &&
+            !/[\r\n\x00-\x1F\x7F]/.test(token) &&
+            token === token.trim(),
+            "LAB_ACCESS_TOKEN is missing or malformed"
+          );
+
+          async function request(path, method = "GET", authenticated = true) {
+            const headers = authenticated
+              ? { Authorization: `Bearer ${token}` }
+              : {};
+
+            const response = await fetch(base + path, {
+              method,
+              headers,
+              signal: AbortSignal.timeout(15000)
+            });
+
+            const data = await response.json();
+            return { status: response.status, data };
+          }
+
+          console.log("1. Checking public health endpoint");
+
+          const health = await request("/health", "GET", false);
+
+          assert.equal(health.status, 200);
+          assert.equal(health.data.version, "0.6.1-candidate");
+          assert.equal(health.data.mode, "laboratory");
+          assert.equal(health.data.openai_sessions_enabled, false);
+
+          console.log("2. Checking unauthorized access");
+
+          const denied = await request("/security", "GET", false);
+
+          assert.equal(denied.status, 401);
+          assert.equal(denied.data.error, "unauthorized");
+
+          console.log("3. Checking authorized access");
+
+          const security = await request("/security");
+
+          assert.equal(security.status, 200);
+          assert.equal(security.data.authenticated, true);
+
+          console.log("4. Checking OpenAI sessions are disabled");
+
+          const blocked = await request("/openai/sessions");
+
+          assert.equal(blocked.status, 403);
+          assert.equal(blocked.data.error, "sessions_disabled");
+
+          console.log("5. Checking initial session status");
+
+          const initial = await request("/lab/status");
+
+          assert.equal(initial.status, 200);
+          assert.equal(typeof initial.data.active, "boolean");
+
+          assert.equal(
+            initial.data.active,
+            false,
+            "An existing lab session is active; refusing to interfere"
+          );
+
+          let created = false;
+
+          try {
+            console.log("6. Creating fictional lab session");
+
+            const start = await request("/lab/start", "POST");
+
+            assert.equal(start.status, 201);
+            assert.equal(start.data.mode, "laboratory");
+            assert.equal(start.data.openai_sessions_enabled, false);
+            assert.equal(start.data.max_duration_seconds, 180);
+            assert.ok(start.data.session_id);
+
+            created = true;
+
+            console.log("7. Checking active session");
+
+            const active = await request("/lab/status");
+
+            assert.equal(active.status, 200);
+            assert.equal(active.data.active, true);
+            assert.ok(active.data.remaining_seconds > 0);
+            assert.equal(active.data.openai_sessions_enabled, false);
+
+            console.log("8. Checking duplicate-session protection");
+
+            const duplicate = await request("/lab/start", "POST");
+
+            assert.equal(duplicate.status, 409);
+            assert.equal(
+              duplicate.data.error,
+              "session_already_active"
+            );
+
+          } finally {
+            if (created) {
+              console.log("9. Closing fictional lab session");
+
+              const end = await request("/lab/end", "POST");
+
+              assert.equal(end.status, 200);
+              assert.equal(end.data.ended, true);
+
+              const finalStatus = await request("/lab/status");
+
+              assert.equal(finalStatus.status, 200);
+              assert.equal(finalStatus.data.active, false);
+            }
+          }
+
+          console.log("PASS: Protected Durable Object session lifecycle");
+          console.log("PASS: OpenAI sessions remain disabled");
+          NODE
