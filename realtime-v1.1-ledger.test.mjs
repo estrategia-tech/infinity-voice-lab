@@ -70,7 +70,8 @@ test("bound provider call cannot be released without matching confirmed identity
  const secret="synthetic-internal-release-token-0123456789";
  const ledger=new LabSessionLedger({storage:{
   get:async k=>map.get(k),put:async(k,v)=>map.set(k,structuredClone(v)),
-  transaction:async fn=>fn({get:async k=>map.get(k),put:async(k,v)=>map.set(k,structuredClone(v))})
+  transaction:async fn=>fn({get:async k=>map.get(k),put:async(k,v)=>map.set(k,structuredClone(v))}),
+  setAlarm:async at=>map.set("scheduledAlarm",at)
  }},{INTERNAL_RELEASE_TOKEN:secret});
  const post=async(path,data,authorized=false)=>{
   const r=await ledger.fetch(new Request("https://lab.invalid"+path,{method:"POST",headers:{"content-type":"application/json",...(authorized?{"x-internal-release-token":secret}:{})},body:JSON.stringify(data)}));
@@ -85,4 +86,43 @@ test("bound provider call cannot be released without matching confirmed identity
  assert.equal((await call()).body.error,"concurrency_limit");
  assert.equal((await post("/internal/release",{reservationId,callId:"rtc_12345678",providerAcknowledged:true},true)).status,200);
  assert.equal((await call()).status,200);
+});
+
+test("same reservation DO alarm marks expiry without freeing capacity",async()=>{
+ const map=new Map();let alarmAt;
+ const storage={
+  get:async k=>map.get(k),put:async(k,v)=>map.set(k,structuredClone(v)),
+  transaction:async fn=>fn(storage),setAlarm:async at=>{alarmAt=at}
+ };
+ const ledger=new LabSessionLedger({storage},{});
+ const post=async(path,data)=>ledger.fetch(new Request("https://internal.invalid"+path,{
+  method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(data??{})
+ }));
+ const reserved=await post("/internal/reserve");
+ const {reservationId,expiresAt}=await reserved.json();
+ const bound=await post("/internal/bind",{reservationId,callId:"rtc_12345678"});
+ assert.equal(bound.status,200);
+ assert.equal(alarmAt,expiresAt);
+ map.get("sessions")[reservationId].expiresAt=Date.now()-1;
+ await ledger.alarm();
+ const status=await (await post("/internal/status")).json();
+ assert.equal(status.reservations[0].status,"expired_unterminated");
+ assert.equal((await post("/internal/reserve")).status,429);
+});
+test("alarm scheduling failure remains occupied and flagged",async()=>{
+ const map=new Map();
+ const storage={
+  get:async k=>map.get(k),put:async(k,v)=>map.set(k,structuredClone(v)),
+  transaction:async fn=>fn(storage),setAlarm:async()=>{throw Error("alarm unavailable")}
+ };
+ const ledger=new LabSessionLedger({storage},{});
+ const post=async(path,data)=>ledger.fetch(new Request("https://internal.invalid"+path,{
+  method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(data??{})
+ }));
+ const first=await (await post("/internal/reserve")).json();
+ const r=await post("/internal/bind",{reservationId:first.reservationId,callId:"rtc_12345678"});
+ assert.equal(r.status,503);
+ const status=await (await post("/internal/status")).json();
+ assert.equal(status.reservations[0].status,"alarm_schedule_failed");
+ assert.equal((await post("/internal/reserve")).status,429);
 });
