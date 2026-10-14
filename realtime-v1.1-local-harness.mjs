@@ -1,10 +1,14 @@
 import {LabSessionLedger} from "./realtime-v1.1-ledger-candidate.mjs";
+import broker from "./realtime-v1.1-broker-candidate.mjs";
 export {LabSessionLedger};
 export default {
  async fetch(request,env){
   const url=new URL(request.url);
   if(url.pathname==="/health") return Response.json({lab:true,openai_enabled:false});
-  // Only local tests. No publicly deployed endpoint.
+  // Exercise the actual fail-closed broker over local HTTP. Do not route
+  // reservations or secrets to OpenAI.
+  if(url.pathname==="/api/realtime/session")return broker.fetch(request,env);
+  // Test-only route; never deploy this harness publicly.
   if(url.pathname!=="/__local/reserve" || request.method!=="POST")
    return Response.json({error:"not_found"},{status:404});
   if(request.headers.get("x-local-test")!=="infinity-voice-v11")
