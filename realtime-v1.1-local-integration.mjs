@@ -63,6 +63,12 @@ if(phase==="initial"){
  const bind=await fetch(base+"/__local/bind",{method:"POST",headers:{"x-local-test":"infinity-voice-v11","content-type":"application/json"},body:JSON.stringify({reservationId:first.data.reservationId,callId:"rtc_12345678"})});
  assert.equal(bind.status,200);
  const bound=await status();assert.equal(bound.reservations[0].callId,"rtc_12345678");
+ const {reconcilePrimaryLedger}=await import("./realtime-v1.1-primary-reconciliation.mjs");
+ const primaryStub={fetch:()=>fetch(base+"/__local/status",{method:"POST",headers:{"x-local-test":"infinity-voice-v11"}})};
+ const primary=await reconcilePrimaryLedger({ledgerStub:primaryStub});
+ assert.equal(primary.ok,true);
+ assert.equal(primary.results[0].status,"pending");
+ assert.equal(primary.providerVerified,false);
  const {reconcileLabState}=await import("./realtime-v1.1-reconciliation.mjs");
  const ledgerStub={fetch:()=>fetch(base+"/__local/status",{method:"POST",headers:{"x-local-test":"infinity-voice-v11"}})};
  const alarmStub={fetch:async()=>Response.json({binding:null})};
