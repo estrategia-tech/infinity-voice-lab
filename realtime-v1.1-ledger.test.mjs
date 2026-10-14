@@ -16,22 +16,25 @@ test("only internal POST reservation route",async()=>{
  assert.equal((await call("GET")).status,404);
  assert.equal((await call("POST","/unknown")).status,404);
 });
-test("one concurrent session; expiry frees a slot",async()=>{
+test("one concurrent session; expiry never frees unresolved slot",async()=>{
  const {call,map}=setup();
  const first=await call();assert.equal(first.status,200);
  assert.equal((await call()).body.error,"concurrency_limit");
  const sessions=map.get("sessions");
  sessions[first.body.reservationId].expiresAt=Date.now()-1;
  map.set("sessions",sessions);
- assert.equal((await call()).status,200);
+ assert.equal((await call()).body.error,"concurrency_limit");
 });
-test("three reservations per UTC day",async()=>{
+test("three explicit releases consume daily quota",async()=>{
  const {call,map}=setup();
  for(let i=0;i<3;i++){
   const r=await call();assert.equal(r.status,200);
-  const sessions=map.get("sessions");
-  sessions[r.body.reservationId].expiresAt=Date.now()-1;
-  map.set("sessions",sessions);
+  const ledger=new LabSessionLedger({storage:{
+   get:async k=>map.get(k),put:async(k,v)=>map.set(k,structuredClone(v)),
+   transaction:async fn=>fn({get:async k=>map.get(k),put:async(k,v)=>map.set(k,structuredClone(v))})
+  }},{});
+  const released=await ledger.fetch(new Request("https://lab.invalid/internal/release",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({reservationId:r.body.reservationId})}));
+  assert.equal(released.status,200);
  }
  const r=await call();
  assert.equal(r.status,429);
