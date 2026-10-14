@@ -23,6 +23,8 @@ jobs:
         run: node --test realtime-v1.1-admission.test.mjs
       - name: Test isolated lab access guard
         run: node --test realtime-v1.1-access.test.mjs
+      - name: Verify session termination and budget release gates
+        run: node --test realtime-v1.1-lifecycle.test.mjs
       - name: Verify browser release gate
         run: node --test realtime-v1.1-browser-gate.test.mjs
       - name: Syntax-check browser candidate
