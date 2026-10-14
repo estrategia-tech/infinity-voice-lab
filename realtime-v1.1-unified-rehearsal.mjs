@@ -16,6 +16,7 @@ export async function rehearseUnifiedSession({request,env={},ledgerStub,mockProv
  try{
   if(Number(request.headers.get("content-length"))>32768)return fail(413,"offer_too_large");
   sdp=await request.text();
+  if(new TextEncoder().encode(sdp).byteLength>32768)return fail(413,"offer_too_large");
  }catch{return fail(400,"invalid_request")}
  const offer=prepareUnifiedOffer({sdp});
  if(!offer.ok)return fail(400,offer.error);
@@ -28,10 +29,11 @@ export async function rehearseUnifiedSession({request,env={},ledgerStub,mockProv
  }catch{
   // Mock failures do not consume concurrency; daily attempt remains charged.
   try{
-   await ledgerStub.fetch(new Request("https://internal.invalid/internal/release",{
+   const releaseResponse=await ledgerStub.fetch(new Request("https://internal.invalid/internal/release",{
     method:"POST",headers:{"content-type":"application/json"},
     body:JSON.stringify({reservationId:admitted.reservation.reservationId})
    }));
+   if(!releaseResponse.ok)return fail(503,"mock_failed_release_unverified");
   }catch{return fail(503,"mock_failed_release_unverified")}
   return fail(502,"mock_failed");
  }
