@@ -1,0 +1,70 @@
+
+name: Infinity Voice v0.9 Live Security Check
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Test live Worker authentication
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          URL="https://infinity-voice-v09-lab.estrategia-a81.workers.dev/api/chat"
+          ORIGIN="https://estrategia-tech.github.io"
+
+          check() {
+            local label="$1"
+            local expected_status="$2"
+            local expected_error="$3"
+            shift 3
+
+            local response status body
+            response=$(curl --silent --show-error \
+              --max-time 15 \
+              -w '\n%{http_code}' \
+              -X POST "$URL" \
+              -H 'Content-Type: application/json' \
+              -d '{"message":"Prueba de seguridad"}' \
+              "$@")
+
+            status="${response##*$'\n'}"
+            body="${response%$'\n'*}"
+
+            if [[ "$status" != "$expected_status" ]]; then
+              echo "FAIL: $label (HTTP $status)"
+              exit 1
+            fi
+
+            RESPONSE_BODY="$body" EXPECTED="$expected_error" \
+              node -e '
+                const data=JSON.parse(process.env.RESPONSE_BODY);
+                if(data.error!==process.env.EXPECTED)
+                  process.exit(1);
+              ' || {
+                echo "FAIL: $label (unexpected response)"
+                exit 1
+              }
+
+            echo "PASS: $label"
+          }
+
+          check "Missing token" 401 unauthorized \
+            -H "Origin: $ORIGIN"
+
+          check "Invalid token" 401 unauthorized \
+            -H "Origin: $ORIGIN" \
+            -H "Authorization: Bearer invalid-test-token"
+
+          check "Invalid origin" 403 origin_denied \
+            -H "Origin: https://unauthorized.example"
+
+          echo "PASS: All 3 live security checks"
