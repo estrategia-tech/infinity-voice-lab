@@ -34,6 +34,8 @@ export async function rehearseUnifiedSession({request,env={},ledgerStub,mockProv
     body:JSON.stringify({reservationId:admitted.reservation.reservationId})
    }));
    if(!releaseResponse.ok)return fail(503,"mock_failed_release_unverified");
+   const releaseBody=await releaseResponse.json();
+   if(releaseBody?.released!==true)return fail(503,"mock_failed_release_unverified");
   }catch{return fail(503,"mock_failed_release_unverified")}
   return fail(502,"mock_failed");
  }
