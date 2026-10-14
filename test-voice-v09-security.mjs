@@ -1,0 +1,17 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import worker from './infinity-voice-v09-candidate.mjs';
+const TOKEN='synthetic-v09-token-12345678901234567890';
+const ORIGIN='https://estrategia-tech.github.io';
+const req=(headers={},body='{"message":"Hola"}')=>new Request('https://lab.invalid/api/chat',{method:'POST',headers:{Origin:ORIGIN,Authorization:'Bearer '+TOKEN,'Content-Type':'application/json',...headers},body});
+const call=(env,request=req())=>worker.fetch(request,env);
+const env={LAB_ACCESS_TOKEN:TOKEN,VOICE_AI_ENABLED:'false'};
+test('health defaults to AI disabled',async()=>{const r=await worker.fetch(new Request('https://lab.invalid/health'),{});assert.equal((await r.json()).ai_enabled,false)});
+test('disabled mode never calls provider',async()=>{const r=await call(env);assert.equal(r.status,403)});
+test('enabled without key fails closed',async()=>{const r=await call({...env,VOICE_AI_ENABLED:'true'});assert.equal(r.status,503)});
+test('missing token fails closed',async()=>{const r=await call({VOICE_AI_ENABLED:'true'});assert.equal(r.status,503)});
+test('bad bearer is rejected',async()=>{const r=await call(env,req({Authorization:'Bearer bad'}));assert.equal(r.status,401)});
+test('wrong origin is rejected',async()=>{const r=await call(env,req({Origin:'https://attacker.invalid'}));assert.equal(r.status,403)});
+test('missing quota fails closed even with key',async()=>{const r=await call({...env,VOICE_AI_ENABLED:'true',OPENAI_API_KEY:'sk-synthetic'});assert.equal(r.status,503)});
+test('quota denial blocks provider',async()=>{const quota={idFromName:()=>({}),get:()=>({fetch:async()=>new Response('{}',{status:429})})};const r=await call({...env,VOICE_AI_ENABLED:'true',OPENAI_API_KEY:'sk-synthetic',VOICE_QUOTA:quota});assert.equal(r.status,429)});
+test('rejects oversized input',async()=>{const quota={idFromName:()=>({}),get:()=>({fetch:async()=>new Response('{}',{status:200})})};const r=await call({...env,VOICE_AI_ENABLED:'true',OPENAI_API_KEY:'sk-synthetic',VOICE_QUOTA:quota},req({},JSON.stringify({message:'a'.repeat(501)})));assert.equal(r.status,400)});
