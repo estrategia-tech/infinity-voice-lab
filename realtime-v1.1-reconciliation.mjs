@@ -18,7 +18,9 @@ export async function reconcileLabState({ledgerStub,alarmStub,now=Date.now()}={}
    const match=binding?.reservationId===reservation.reservationId &&
     binding?.callId===reservation.callId && Boolean(reservation.callId);
    const expired=reservation.expiresAt<=now;
-   const status=reservation.status==="alarm_schedule_failed"?"alarm_schedule_failed":\n    reservation.status==="expired_unterminated"?"expired_unterminated":\n    !reservation.callId?"unbound_reservation":
+   const status=reservation.status==="alarm_schedule_failed"?"alarm_schedule_failed":
+    reservation.status==="expired_unterminated"?"expired_unterminated":
+    !reservation.callId?"unbound_reservation":
     !match?"alarm_binding_missing_or_mismatched":
     binding.status==="mock_terminated"?"mock_termination_not_provider_proof":
     binding.status==="mock_termination_failed"?"mock_termination_failed":
