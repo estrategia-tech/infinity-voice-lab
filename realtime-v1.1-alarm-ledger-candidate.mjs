@@ -33,7 +33,7 @@ export class AlarmLabLedger {
   if(this.env?.MOCK_ALARM_TERMINATION===true){
    const {expireBoundCall}=await import("./realtime-v1.1-timeout-coordinator.mjs");
    const attempt=(binding.mockAttempts||0)+1;
-   const simulateFailure=this.env?.MOCK_ALARM_FAIL_FIRST===true && attempt===1;
+   const simulateFailure=this.env?.MOCK_ALARM_FAIL_ALWAYS===true || (this.env?.MOCK_ALARM_FAIL_FIRST===true && attempt===1);
    const fakeLedger={fetch:async()=>Response.json({released:true})};
    const outcome=await expireBoundCall({
     binding,now:Math.max(Date.now(),binding.expiresAt),
