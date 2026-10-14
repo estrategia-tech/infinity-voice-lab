@@ -1,0 +1,10 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {checkLabAccess,equalSecret} from "./realtime-v1.1-access.mjs";
+const env={LAB_ALLOWED_ORIGIN:"https://estrategia-tech.github.io",LAB_ACCESS_TOKEN:"x".repeat(40)};
+const request=(origin=env.LAB_ALLOWED_ORIGIN,token=env.LAB_ACCESS_TOKEN)=>new Request("https://lab.invalid/api/realtime/session",{method:"POST",headers:{Origin:origin,Authorization:"Bearer "+token}});
+test("no secret or origin fails closed",()=>assert.equal(checkLabAccess(request(),{}).status,503));
+test("invalid origin rejected",()=>assert.equal(checkLabAccess(request("https://evil.invalid"),env).status,403));
+test("missing and invalid token rejected",()=>{assert.equal(checkLabAccess(new Request("https://lab.invalid",{headers:{Origin:env.LAB_ALLOWED_ORIGIN}}),env).status,401);assert.equal(checkLabAccess(request(env.LAB_ALLOWED_ORIGIN,"wrong"),env).status,401)});
+test("valid origin and secret accepted for lab guard only",()=>assert.equal(checkLabAccess(request(),env).ok,true));
+test("different length and unicode secrets do not match",()=>{assert.equal(equalSecret("abc","abcd"),false);assert.equal(equalSecret("á","a"),false)});
