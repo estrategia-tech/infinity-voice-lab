@@ -67,20 +67,22 @@ test("release frees concurrency but never refunds daily usage",async()=>{
 test("bound provider call cannot be released without matching confirmed identity",async()=>{
  const {call,map}=setup();
  const first=await call();assert.equal(first.status,200);
+ const secret="synthetic-internal-release-token-0123456789";
  const ledger=new LabSessionLedger({storage:{
   get:async k=>map.get(k),put:async(k,v)=>map.set(k,structuredClone(v)),
   transaction:async fn=>fn({get:async k=>map.get(k),put:async(k,v)=>map.set(k,structuredClone(v))})
- }},{});
- const post=async(path,data)=>{
-  const r=await ledger.fetch(new Request("https://lab.invalid"+path,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(data)}));
+ }},{INTERNAL_RELEASE_TOKEN:secret});
+ const post=async(path,data,authorized=false)=>{
+  const r=await ledger.fetch(new Request("https://lab.invalid"+path,{method:"POST",headers:{"content-type":"application/json",...(authorized?{"x-internal-release-token":secret}:{})},body:JSON.stringify(data)}));
   return {status:r.status,body:await r.json()};
  };
  const reservationId=first.body.reservationId;
  assert.equal((await post("/internal/bind",{reservationId,callId:"rtc_12345678"})).status,200);
  assert.equal((await post("/internal/bind",{reservationId,callId:"rtc_12345678"})).status,409);
- assert.equal((await post("/internal/release",{reservationId})).body.error,"bound_call_mismatch");
- assert.equal((await post("/internal/release",{reservationId,callId:"rtc_12345678"})).body.error,"termination_unconfirmed");
+ assert.equal((await post("/internal/release",{reservationId})).body.error,"release_unauthorized");
+ assert.equal((await post("/internal/release",{reservationId,callId:"rtc_12345678",providerAcknowledged:true})).status,403);
+ assert.equal((await post("/internal/release",{reservationId,callId:"rtc_12345678"},true)).body.error,"termination_unconfirmed");
  assert.equal((await call()).body.error,"concurrency_limit");
- assert.equal((await post("/internal/release",{reservationId,callId:"rtc_12345678",providerAcknowledged:true})).status,200);
+ assert.equal((await post("/internal/release",{reservationId,callId:"rtc_12345678",providerAcknowledged:true},true)).status,200);
  assert.equal((await call()).status,200);
 });
