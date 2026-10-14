@@ -11,13 +11,16 @@ jobs:
   local-integration:
     runs-on: ubuntu-latest
     timeout-minutes: 12
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
           ref: main
           persist-credentials: false
 
-      - uses: actions/setup-node@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: '22'
 
@@ -26,52 +29,100 @@ jobs:
           node --check infinity-voice-v081-security.mjs
           node --check test-voice-v082-local.mjs
 
-      - name: Install Wrangler locally (no Cloudflare deployment)
+      - name: Install Wrangler locally
         run: npm install --no-save --no-package-lock wrangler@4
 
       - name: Exercise real local Durable Object
         shell: bash
         run: |
           set -euo pipefail
+
           export LAB_ACCESS_TOKEN='synthetic-v082-local-token-12345678901234567890'
-          echo "LAB_ACCESS_TOKEN=$LAB_ACCESS_TOKEN" > .dev.vars.v082
-          cleanup() { if [[ -n "${PID:-}" ]]; then kill "$PID" 2>/dev/null || true; wait "$PID" 2>/dev/null || true; fi; rm -f .dev.vars.v082; }
+
+          cleanup() {
+            local pids
+            pids="$(fuser -n tcp 8789 2>/dev/null || true)"
+            if [[ -n "$pids" ]]; then
+              kill $pids 2>/dev/null || true
+            fi
+            if [[ -n "${PID:-}" ]]; then
+              kill "$PID" 2>/dev/null || true
+              wait "$PID" 2>/dev/null || true
+            fi
+          }
+
           trap cleanup EXIT
 
           start_worker() {
-            npx wrangler dev --local --ip 127.0.0.1 --port 8789 \
+            npx wrangler dev \
+              --local \
+              --ip 127.0.0.1 \
+              --port 8789 \
               --config wrangler.voice-v082-local.jsonc \
-              --persist-to "$1" --var LAB_ACCESS_TOKEN:"$LAB_ACCESS_TOKEN" > /tmp/voice-v082-wrangler.log 2>&1 &
+              --persist-to "$1" \
+              --var LAB_ACCESS_TOKEN:"$LAB_ACCESS_TOKEN" \
+              > /tmp/voice-v082-wrangler.log 2>&1 &
+
             PID=$!
+
             for i in $(seq 1 45); do
-              if curl --silent --fail http://127.0.0.1:8789/health >/dev/null; then return 0; fi
-              if ! kill -0 "$PID" 2>/dev/null; then cat /tmp/voice-v082-wrangler.log; return 1; fi
+              if curl --silent --fail \
+                http://127.0.0.1:8789/health >/dev/null; then
+                return 0
+              fi
+
+              if ! kill -0 "$PID" 2>/dev/null; then
+                cat /tmp/voice-v082-wrangler.log
+                return 1
+              fi
+
               sleep 1
             done
+
             cat /tmp/voice-v082-wrangler.log
             return 1
           }
 
           stop_worker() {
-            kill "$PID" 2>/dev/null || true
-            wait "$PID" 2>/dev/null || true
+            local pids
+            pids="$(fuser -n tcp 8789 2>/dev/null || true)"
+
+            if [[ -n "$pids" ]]; then
+              kill $pids 2>/dev/null || true
+            fi
+
+            if [[ -n "${PID:-}" ]]; then
+              kill "$PID" 2>/dev/null || true
+              wait "$PID" 2>/dev/null || true
+            fi
+
             unset PID
-            for i in $(seq 1 20); do
-              if ! curl --silent --max-time 1 http://127.0.0.1:8789/health >/dev/null; then return 0; fi
+
+            for i in $(seq 1 30); do
+              if ! curl --silent --max-time 1 \
+                http://127.0.0.1:8789/health >/dev/null; then
+                return 0
+              fi
               sleep 1
             done
-            echo 'Local server failed to stop'; return 1
+
+            echo 'Local server failed to stop'
+            return 1
           }
 
+          echo 'PHASE 1: Initial quota validation'
           start_worker /tmp/voice-v082-persist
           node test-voice-v082-local.mjs initial
           stop_worker
 
+          echo 'PHASE 2: Persistence after restart'
           start_worker /tmp/voice-v082-persist
           node test-voice-v082-local.mjs persisted
           stop_worker
 
+          echo 'PHASE 3: Concurrent requests'
           start_worker /tmp/voice-v082-concurrent
           node test-voice-v082-local.mjs concurrent
+          stop_worker
 
           echo 'PASS: all local Durable Object integration checks'
