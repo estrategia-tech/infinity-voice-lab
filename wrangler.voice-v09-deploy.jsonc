@@ -1,0 +1,24 @@
+
+{
+  "name": "infinity-voice-v09-lab",
+  "main": "infinity-voice-v09-candidate.mjs",
+  "compatibility_date": "2026-10-12",
+  "workers_dev": true,
+  "vars": {
+    "VOICE_AI_ENABLED": "false"
+  },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "VOICE_QUOTA",
+        "class_name": "VoiceQuota"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["VoiceQuota"]
+    }
+  ]
+}
