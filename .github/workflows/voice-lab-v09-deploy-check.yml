@@ -1,0 +1,70 @@
+
+name: Infinity Voice v0.9 Deployment Check
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Check syntax
+        run: |
+          node --check infinity-voice-v09-candidate.mjs
+          node --check test-voice-v09-security.mjs
+
+      - name: Run security tests
+        run: node --test test-voice-v09-security.mjs
+
+      - name: Install Wrangler
+        run: npm install --no-save --no-package-lock wrangler@4
+
+      - name: Validate deployment configuration
+        run: |
+          node -e "
+          const fs = require('fs');
+          const c = JSON.parse(
+            fs.readFileSync('wrangler.voice-v09-deploy.jsonc', 'utf8')
+          );
+          if (c.name !== 'infinity-voice-v09-lab') {
+            throw Error('Unexpected Worker name');
+          }
+          if (c.vars?.VOICE_AI_ENABLED !== 'false') {
+            throw Error('AI must remain disabled');
+          }
+          if (!c.durable_objects?.bindings?.some(
+            b => b.name === 'VOICE_QUOTA' &&
+                 b.class_name === 'VoiceQuota'
+          )) {
+            throw Error('VOICE_QUOTA binding missing');
+          }
+          if (!c.migrations?.some(
+            m => m.new_sqlite_classes?.includes('VoiceQuota')
+          )) {
+            throw Error('VoiceQuota migration missing');
+          }
+          console.log('PASS: isolated deployment configuration');
+          "
+
+      - name: Validate Wrangler bundle
+        run: |
+          npx wrangler deploy \
+            --config wrangler.voice-v09-deploy.jsonc \
+            --dry-run \
+            --outdir /tmp/infinity-voice-v09-check
