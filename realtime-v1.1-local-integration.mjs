@@ -24,4 +24,15 @@ if(phase==="initial"){
  assert.equal(results.filter(x=>x.status===200).length,1);
  assert.equal(results.filter(x=>x.status===429).length,9);
  console.log("PASS: 10 simultaneous reservations allow exactly one");
+}else if(phase==="unified"){
+ const offer="v=0\\r\\no=- 0 0 IN IP4 127.0.0.1\\r\\ns=-\\r\\nt=0 0\\r\\nm=audio 9 UDP/TLS/RTP/SAVPF 111\\r\\n";
+ const send=async(token="synthetic-local-only-token-0123456789abcdef",body=offer)=>{
+  const r=await fetch(base+"/__local/unified-mock",{method:"POST",headers:{origin:"https://lab.example.test",authorization:"Bearer "+token},body});
+  return {status:r.status,data:await r.json()};
+ };
+ const denied=await send("invalid");assert.equal(denied.status,401);
+ const invalid=await send(undefined,"invalid");assert.equal(invalid.status,400);
+ const first=await send();assert.equal(first.status,200);assert.equal(first.data.mock,true);
+ const second=await send();assert.equal(second.status,429);
+ console.log("PASS: real local DO, auth, SDP, offline mock and concurrency");
 }else throw Error("unknown phase");
