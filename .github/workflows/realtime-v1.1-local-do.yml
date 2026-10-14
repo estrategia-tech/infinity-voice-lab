@@ -72,3 +72,20 @@ jobs:
           trap 'kill $pid 2>/dev/null || true' EXIT
           for i in {1..40}; do if curl -fsS http://127.0.0.1:8798/health >/dev/null; then break; fi; sleep 2; done
           TEST_BASE_URL=http://127.0.0.1:8798 node realtime-v1.1-local-integration.mjs reconciliation-status
+      - name: Verify native same-DO expiry alarm across restart
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/infinity-voice-v11-native-alarm
+          npx wrangler dev --local --config wrangler.realtime-v11-local.jsonc --port 8799 --persist-to /tmp/infinity-voice-v11-native-alarm > /tmp/v11-native-alarm.log 2>&1 &
+          pid=$!
+          trap 'kill $pid 2>/dev/null || true' EXIT
+          for i in {1..40}; do if curl -fsS http://127.0.0.1:8799/health >/dev/null; then break; fi; sleep 2; done
+          TEST_BASE_URL=http://127.0.0.1:8799 node realtime-v1.1-local-integration.mjs alarm-initial
+          kill "$pid" || true
+          wait "$pid" || true
+          npx wrangler dev --local --config wrangler.realtime-v11-local.jsonc --port 8799 --persist-to /tmp/infinity-voice-v11-native-alarm > /tmp/v11-native-alarm-restart.log 2>&1 &
+          pid=$!
+          for i in {1..40}; do if curl -fsS http://127.0.0.1:8799/health >/dev/null; then break; fi; sleep 2; done
+          sleep 125
+          TEST_BASE_URL=http://127.0.0.1:8799 node realtime-v1.1-local-integration.mjs alarm-persisted
