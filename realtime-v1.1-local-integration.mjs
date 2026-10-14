@@ -35,4 +35,22 @@ if(phase==="initial"){
  const first=await send();assert.equal(first.status,200);assert.equal(first.data.mock,true);
  const second=await send();assert.equal(second.status,429);
  console.log("PASS: real local DO, auth, SDP, offline mock and concurrency");
+}else if(phase==="bound-release"){
+ const first=await reserve();assert.equal(first.status,200);
+ const post=async(path,data,authorized=false)=>{
+  const r=await fetch(base+"/__local/"+path,{method:"POST",headers:{
+   "x-local-test":"infinity-voice-v11","Content-Type":"application/json",
+   ...(authorized?{"x-local-authorized-release":"yes"}:{})
+  },body:JSON.stringify(data)});
+  return {status:r.status,data:await r.json()};
+ };
+ const reservationId=first.data.reservationId,callId="rtc_12345678";
+ assert.equal((await post("bind",{reservationId,callId})).status,200);
+ assert.equal((await post("release",{reservationId,callId,providerAcknowledged:true})).status,403);
+ assert.equal((await post("release",{reservationId,callId:"rtc_wrong123",providerAcknowledged:true},true)).status,409);
+ assert.equal((await post("release",{reservationId,callId},true)).status,409);
+ assert.equal((await reserve()).status,429);
+ assert.equal((await post("release",{reservationId,callId,providerAcknowledged:true},true)).status,200);
+ assert.equal((await reserve()).status,200);
+ console.log("PASS: real local DO blocks forged release and requires server capability");
 }else throw Error("unknown phase");
