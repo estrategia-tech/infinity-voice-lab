@@ -5,6 +5,19 @@
  */
 export class LabSessionLedger {
   constructor(state, env) { this.state=state; this.env=env; }
+  async alarm(){
+    const now=Date.now();
+    await this.state.storage.transaction(async txn=>{
+      const sessions=(await txn.get("sessions"))||{};
+      for(const s of Object.values(sessions))
+        if(s.callId&&s.expiresAt<=now&&s.status==="pending")s.status="expired_unterminated";
+      await txn.put("sessions",sessions);
+    });
+    // Never release capacity based on a clock or simulated termination.
+    const sessions=(await this.state.storage.get("sessions"))||{};
+    const future=Object.values(sessions).filter(s=>s.callId&&s.status==="pending"&&s.expiresAt>now).map(s=>s.expiresAt);
+    if(future.length)await this.state.storage.setAlarm(Math.min(...future));
+  }
   async fetch(request) {
     const url=new URL(request.url);
     if (!["/internal/reserve","/internal/release","/internal/bind","/internal/status"].includes(url.pathname) || request.method!=="POST")
@@ -16,7 +29,7 @@ export class LabSessionLedger {
       const now=Date.now();
       return Response.json({reservations:Object.entries(sessions).map(([reservationId,session])=>({
         reservationId,callId:session.callId??null,expiresAt:session.expiresAt,
-        expired:session.expiresAt<=now
+        expired:session.expiresAt<=now,status:session.status??"unbound"
       }))});
     }
     if(url.pathname==="/internal/bind"){
@@ -25,15 +38,31 @@ export class LabSessionLedger {
       if(typeof data?.reservationId!=="string"||!/^[-a-f0-9]{36}$/i.test(data.reservationId)||
          typeof data?.callId!=="string"||!/^rtc_[A-Za-z0-9_-]{6,128}$/.test(data.callId))
        return Response.json({error:"invalid_binding"},{status:400});
-      return this.state.storage.transaction(async txn=>{
+      const result=await this.state.storage.transaction(async txn=>{
        const sessions=(await txn.get("sessions"))||{};
        const session=sessions[data.reservationId];
        if(!session)return Response.json({error:"reservation_not_found"},{status:404});
        if(session.callId)return Response.json({error:"already_bound"},{status:409});
-       sessions[data.reservationId]={...session,callId:data.callId};
+       if(session.expiresAt<=Date.now())return Response.json({error:"reservation_expired"},{status:409});
+       sessions[data.reservationId]={...session,callId:data.callId,status:"pending"};
        await txn.put("sessions",sessions);
        return Response.json({bound:true});
       });
+      if(!result.ok)return result;
+      try{
+       const sessions=(await this.state.storage.get("sessions"))||{};
+       await this.state.storage.setAlarm(sessions[data.reservationId].expiresAt);
+      }catch{
+       await this.state.storage.transaction(async txn=>{
+        const sessions=(await txn.get("sessions"))||{};
+        if(sessions[data.reservationId]?.callId===data.callId){
+         sessions[data.reservationId].status="alarm_schedule_failed";
+         await txn.put("sessions",sessions);
+        }
+       });
+       return Response.json({error:"alarm_schedule_failed"},{status:503});
+      }
+      return result;
     }
     if(url.pathname==="/internal/release"){
       let data;
