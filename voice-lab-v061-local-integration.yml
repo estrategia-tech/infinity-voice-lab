@@ -1,0 +1,79 @@
+name: Infinity Voice Lab v0.6.1 Local Integration
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout isolated laboratory branch
+        uses: actions/checkout@v4
+        with:
+          ref: lab/voice-v0.6-security
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Wrangler
+        run: npm install --no-save --no-package-lock wrangler@4
+      - name: Start local Cloudflare runtime
+        run: |
+          printf 'LAB_ACCESS_TOKEN=local-test-token-1234567890-abcdefghijklmnopqrstuvwxyz\n' > .dev.vars
+          npx wrangler dev --config wrangler.lab.jsonc --local --ip 127.0.0.1 --port 8787 > /tmp/voice-lab.log 2>&1 &
+          echo $! > /tmp/voice-lab.pid
+          for i in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:8787/health >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/voice-lab.log
+          exit 1
+      - name: Test real local Durable Object lifecycle
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          const base='http://127.0.0.1:8787';
+          const token='local-test-token-1234567890-abcdefghijklmnopqrstuvwxyz';
+          async function call(path,method='GET',authenticated=true){
+            const headers=authenticated?{Authorization:`Bearer ${token}`}:{ };
+            const res=await fetch(base+path,{method,headers,redirect:'manual'});
+            const data=await res.json();
+            return {status:res.status,data};
+          }
+          const health=await call('/health');
+          assert.equal(health.status,200);
+          assert.equal(health.data.version,'0.6.1-candidate');
+          assert.equal(health.data.openai_sessions_enabled,false);
+          assert.equal((await call('/security','GET',false)).status,401);
+          assert.equal((await call('/security')).status,200);
+          assert.equal((await call('/openai/realtime','POST')).status,403);
+          const initial=await call('/lab/status');
+          assert.equal(initial.status,200);
+          assert.equal(initial.data.active,false);
+          const start=await call('/lab/start','POST');
+          assert.equal(start.status,201);
+          assert.equal(start.data.max_duration_seconds,180);
+          assert.equal(start.data.openai_sessions_enabled,false);
+          assert.equal((await call('/lab/start','POST')).status,409);
+          const active=await call('/lab/status');
+          assert.equal(active.status,200);
+          assert.equal(active.data.active,true);
+          assert.equal((await call('/lab/end','POST')).status,200);
+          const ended=await call('/lab/status');
+          assert.equal(ended.data.active,false);
+          assert.equal((await call('/lab/end','POST')).status,404);
+          console.log('PASS: local Durable Object lifecycle and security checks');
+          NODE
+      - name: Show diagnostic logs on failure
+        if: failure()
+        run: cat /tmp/voice-lab.log || true
+      - name: Clean up local runtime
+        if: always()
+        run: |
+          if [ -f /tmp/voice-lab.pid ]; then kill "$(cat /tmp/voice-lab.pid)" || true; fi
+          rm -f .dev.vars
