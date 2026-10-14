@@ -27,20 +27,31 @@ export class AlarmLabLedger {
  }
  async alarm(){
   const binding=await this.state.storage.get("binding");
-  if(!binding||binding.status!=="pending")return;
+  if(!binding||!["pending","mock_retry_pending"].includes(binding.status))return;
   // Explicitly mock-only: never invoke provider from an alarm in this candidate.
   // The real provider transport and credentials are deliberately absent.
   if(this.env?.MOCK_ALARM_TERMINATION===true){
    const {expireBoundCall}=await import("./realtime-v1.1-timeout-coordinator.mjs");
+   const attempt=(binding.mockAttempts||0)+1;
+   const simulateFailure=this.env?.MOCK_ALARM_FAIL_FIRST===true && attempt===1;
    const fakeLedger={fetch:async()=>Response.json({released:true})};
    const outcome=await expireBoundCall({
     binding,now:Math.max(Date.now(),binding.expiresAt),
     apiKey:"synthetic-alarm-only-key-000000",
     providerEnabled:true,
-    transport:async()=>({ok:true,status:200}),
+    transport:async()=>simulateFailure?({ok:false,status:503}):({ok:true,status:200}),
     ledgerStub:fakeLedger
    });
-   await this.state.storage.put("binding",{...binding,status:outcome.ok?"mock_terminated":"mock_termination_failed"});
+   if(outcome.ok){
+    await this.state.storage.put("binding",{...binding,mockAttempts:attempt,status:"mock_terminated"});
+    return;
+   }
+   if(attempt<2){
+    await this.state.storage.put("binding",{...binding,mockAttempts:attempt,status:"mock_retry_pending"});
+    await this.state.storage.setAlarm(Date.now()+1000);
+    return;
+   }
+   await this.state.storage.put("binding",{...binding,mockAttempts:attempt,status:"mock_termination_failed"});
    return;
   }
   // No provider connection configured. Never release capacity or pretend
