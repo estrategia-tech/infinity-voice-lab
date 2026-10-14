@@ -1,0 +1,131 @@
+
+name: Infinity Voice v0.9 Manual Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_worker:
+        description: 'Type infinity-voice-v09-lab'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: infinity-voice-v09-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: inputs.confirm_worker == 'infinity-voice-v09-lab'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Check required secrets
+        env:
+          CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          test -n "$CF_TOKEN" || {
+            echo 'Missing CLOUDFLARE_API_TOKEN'
+            exit 1
+          }
+          test -n "$CF_ACCOUNT" || {
+            echo 'Missing CLOUDFLARE_ACCOUNT_ID'
+            exit 1
+          }
+          echo 'Required secrets are present'
+
+      - name: Verify Cloudflare credentials
+        env:
+          CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          node --input-type=module <<'NODE'
+          const token = process.env.CF_TOKEN;
+          const response = await fetch(
+            'https://api.cloudflare.com/client/v4/user/tokens/verify',
+            {
+              headers: {
+                Authorization: `Bearer ${token}`
+              }
+            }
+          );
+          const data = await response.json();
+          if (!response.ok || !data.success ||
+              data.result?.status !== 'active') {
+            throw Error('Cloudflare token verification failed');
+          }
+          console.log('Cloudflare token is active');
+          NODE
+
+      - name: Validate Worker target and AI state
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const c = JSON.parse(
+            fs.readFileSync(
+              'wrangler.voice-v09-deploy.jsonc',
+              'utf8'
+            )
+          );
+          if (c.name !== 'infinity-voice-v09-lab')
+            throw Error('Unexpected Worker');
+          if (c.vars?.VOICE_AI_ENABLED !== 'false')
+            throw Error('AI must remain disabled');
+          if (c.main !== 'infinity-voice-v09-candidate.mjs')
+            throw Error('Unexpected source');
+          if (!c.durable_objects?.bindings?.some(
+            b => b.name === 'VOICE_QUOTA' &&
+                 b.class_name === 'VoiceQuota'
+          ))
+            throw Error('Missing quota binding');
+          if (!c.migrations?.some(
+            m => m.new_sqlite_classes?.includes('VoiceQuota')
+          ))
+            throw Error('Missing quota migration');
+          console.log('Deployment configuration validated');
+          NODE
+
+      - name: Run security tests
+        run: |
+          node --check infinity-voice-v09-candidate.mjs
+          node --test test-voice-v09-security.mjs
+
+      - name: Install Wrangler
+        run: npm install --no-save --no-package-lock wrangler@4
+
+      - name: Deploy isolated Worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          npx wrangler deploy \
+            --config wrangler.voice-v09-deploy.jsonc
+
+      - name: Verify AI remains disabled
+        run: |
+          curl --fail --silent --show-error \
+            https://infinity-voice-v09-lab.estrategia-a81.workers.dev/health \
+            | node --input-type=module -e "
+              let s='';
+              for await (const c of process.stdin) s+=c;
+              const d=JSON.parse(s);
+              if (d.ai_enabled !== false)
+                throw Error('AI unexpectedly enabled');
+              if (d.version !== '0.9.0-candidate')
+                throw Error('Unexpected version');
+              console.log('PASS: v0.9 deployed; AI disabled');
+            "
