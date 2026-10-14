@@ -17,6 +17,8 @@ jobs:
           node-version: '22'
       - name: Test disabled Realtime broker
         run: node --test realtime-v1.1-broker.test.mjs
+      - name: Test session ledger candidate
+        run: node --test realtime-v1.1-ledger.test.mjs
       - name: Syntax-check browser candidate
         run: node --check realtime-v1.1-candidate.js
       - name: Syntax-check broker
