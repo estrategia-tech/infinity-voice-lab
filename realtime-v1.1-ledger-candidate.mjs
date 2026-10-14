@@ -35,12 +35,15 @@ export class LabSessionLedger {
       }
       const count=(await txn.get("count"))||0;
       const sessions=(await txn.get("sessions"))||{};
-      const active=Object.values(sessions).filter(s=>s.expiresAt>now);
+      // Fail closed: time expiry is not evidence that a provider call stopped.
+      // Keep all unresolved reservations occupying capacity until an explicit
+      // server-side release follows confirmed provider termination.
+      const active=Object.entries(sessions);
       if(active.length>=limits.maxConcurrent) return Response.json({error:"concurrency_limit"},{status:429});
       if(count>=limits.maxSessionsPerDay) return Response.json({error:"daily_session_limit"},{status:429});
       const id=crypto.randomUUID();
       sessions[id]={expiresAt:now+limits.maxSecondsPerSession*1000};
-      await txn.put("sessions",Object.fromEntries(active.map(s=>[Object.keys(sessions).find(k=>sessions[k]===s),s]).concat([[id,sessions[id]]])));
+      await txn.put("sessions",sessions);
       await txn.put("count",count+1);
       return Response.json({reservationId:id,maxSeconds:limits.maxSecondsPerSession,expiresAt:now+limits.maxSecondsPerSession*1000});
     });
