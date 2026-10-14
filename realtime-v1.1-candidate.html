@@ -1,0 +1,9 @@
+<!doctype html>
+<html lang="es-MX"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer"><title>Infinity Voice v1.1 — candidato aislado</title>
+<style>body{font:16px system-ui;background:#101a29;color:#f3f4f6;margin:2rem auto;padding:1rem;max-width:38rem}button{padding:1rem;margin-right:.5rem;border-radius:.6rem}button:disabled{opacity:.45}p{line-height:1.5}</style></head>
+<body><h1>Infinity Voice Lab v1.1</h1><p>Candidato técnico, sin despliegue ni conexión a producción. No usar información de clientes.</p>
+<p>Por seguridad, esta interfaz no inicia sesiones hasta que exista un backend de laboratorio autorizado con controles de gasto, autenticación y expiración.</p>
+<button id="start">Iniciar prueba interna</button><button id="stop" disabled>Detener</button>
+<p role="status" id="status">Desconectado. El endpoint de sesión aún no está implementado.</p>
+<audio id="remote" autoplay></audio><script type="module" src="./realtime-v1.1-candidate.js"></script></body></html>
