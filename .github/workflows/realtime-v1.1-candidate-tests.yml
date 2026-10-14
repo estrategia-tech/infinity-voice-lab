@@ -1,0 +1,23 @@
+name: Infinity Voice v1.1 Candidate Safety Tests
+on:
+  push:
+    branches:
+      - lab/realtime-v1-1-candidate
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  fail-closed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test disabled Realtime broker
+        run: node --test realtime-v1.1-broker.test.mjs
+      - name: Syntax-check browser candidate
+        run: node --check realtime-v1.1-candidate.js
+      - name: Syntax-check broker
+        run: node --check realtime-v1.1-broker-candidate.mjs
