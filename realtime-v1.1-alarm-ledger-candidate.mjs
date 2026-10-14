@@ -28,8 +28,23 @@ export class AlarmLabLedger {
  async alarm(){
   const binding=await this.state.storage.get("binding");
   if(!binding||binding.status!=="pending")return;
-  // No provider connection configured. Persist explicit unresolved state;
-  // never release capacity or pretend the provider session ended.
+  // Explicitly mock-only: never invoke provider from an alarm in this candidate.
+  // The real provider transport and credentials are deliberately absent.
+  if(this.env?.MOCK_ALARM_TERMINATION===true){
+   const {expireBoundCall}=await import("./realtime-v1.1-timeout-coordinator.mjs");
+   const fakeLedger={fetch:async()=>Response.json({released:true})};
+   const outcome=await expireBoundCall({
+    binding,now:Math.max(Date.now(),binding.expiresAt),
+    apiKey:"synthetic-alarm-only-key-000000",
+    providerEnabled:true,
+    transport:async()=>({ok:true,status:200}),
+    ledgerStub:fakeLedger
+   });
+   await this.state.storage.put("binding",{...binding,status:outcome.ok?"mock_terminated":"mock_termination_failed"});
+   return;
+  }
+  // No provider connection configured. Never release capacity or pretend
+  // the provider session ended.
   await this.state.storage.put("binding",{...binding,status:"expired_unterminated"});
  }
 }
