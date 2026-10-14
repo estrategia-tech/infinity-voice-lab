@@ -23,11 +23,20 @@ export default {
    return Response.json(result,{status:result.status||500});
   }
   // Test-only route; never deploy this harness publicly.
-  if(!["/__local/reserve","/__local/release"].includes(url.pathname) || request.method!=="POST")
+  if(!["/__local/reserve","/__local/release","/__local/bind"].includes(url.pathname) || request.method!=="POST")
    return Response.json({error:"not_found"},{status:404});
   if(request.headers.get("x-local-test")!=="infinity-voice-v11")
    return Response.json({error:"forbidden"},{status:403});
   const stub=env.LAB_LEDGER.get(env.LAB_LEDGER.idFromName("single-ledger"));
-  return stub.fetch(new Request("https://internal.invalid/internal/"+(url.pathname.endsWith("release")?"release":"reserve"),{method:"POST",headers:{"Content-Type":"application/json"},body:url.pathname.endsWith("release")?await request.text():undefined}));
+  const operation=url.pathname.split("/").at(-1);
+  const releaseToken="synthetic-internal-release-token-0123456789";
+  const headers={"Content-Type":"application/json"};
+  // The harness intentionally does not forward arbitrary client credentials.
+  // Only the explicit local test flag can request a server-side capability.
+  if(operation==="release" && request.headers.get("x-local-authorized-release")==="yes")
+   headers["x-internal-release-token"]=releaseToken;
+  return stub.fetch(new Request("https://internal.invalid/internal/"+operation,{
+   method:"POST",headers,body:operation==="reserve"?undefined:await request.text()
+  }));
  }
 };
