@@ -29,6 +29,8 @@ jobs:
         run: node --test realtime-v1.1-admission.test.mjs
       - name: Test isolated lab access guard
         run: node --test realtime-v1.1-access.test.mjs
+      - name: Verify authoritative primary-ledger reconciliation
+        run: node --test realtime-v1.1-primary-reconciliation.test.mjs
       - name: Verify fail-closed cross-ledger reconciliation
         run: node --test realtime-v1.1-reconciliation.test.mjs
       - name: Verify persistent alarm candidate
