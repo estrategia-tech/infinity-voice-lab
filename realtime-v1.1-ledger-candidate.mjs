@@ -7,9 +7,18 @@ export class LabSessionLedger {
   constructor(state, env) { this.state=state; this.env=env; }
   async fetch(request) {
     const url=new URL(request.url);
-    if (!["/internal/reserve","/internal/release","/internal/bind"].includes(url.pathname) || request.method!=="POST")
+    if (!["/internal/reserve","/internal/release","/internal/bind","/internal/status"].includes(url.pathname) || request.method!=="POST")
       return Response.json({error:"not_found"},{status:404});
     // This is internal-only: the public broker must never expose this endpoint.
+    if(url.pathname==="/internal/status"){
+      // Read-only internal diagnostics: never expose this DO through the public broker.
+      const sessions=(await this.state.storage.get("sessions"))||{};
+      const now=Date.now();
+      return Response.json({reservations:Object.entries(sessions).map(([reservationId,session])=>({
+        reservationId,callId:session.callId??null,expiresAt:session.expiresAt,
+        expired:session.expiresAt<=now
+      }))});
+    }
     if(url.pathname==="/internal/bind"){
       let data;
       try{data=await request.json()}catch{return Response.json({error:"invalid_request"},{status:400})}
