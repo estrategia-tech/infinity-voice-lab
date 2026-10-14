@@ -7,9 +7,25 @@ export class LabSessionLedger {
   constructor(state, env) { this.state=state; this.env=env; }
   async fetch(request) {
     const url=new URL(request.url);
-    if (!["/internal/reserve","/internal/release"].includes(url.pathname) || request.method!=="POST")
+    if (!["/internal/reserve","/internal/release","/internal/bind"].includes(url.pathname) || request.method!=="POST")
       return Response.json({error:"not_found"},{status:404});
     // This is internal-only: the public broker must never expose this endpoint.
+    if(url.pathname==="/internal/bind"){
+      let data;
+      try{data=await request.json()}catch{return Response.json({error:"invalid_request"},{status:400})}
+      if(typeof data?.reservationId!=="string"||!/^[-a-f0-9]{36}$/i.test(data.reservationId)||
+         typeof data?.callId!=="string"||!/^rtc_[A-Za-z0-9_-]{6,128}$/.test(data.callId))
+       return Response.json({error:"invalid_binding"},{status:400});
+      return this.state.storage.transaction(async txn=>{
+       const sessions=(await txn.get("sessions"))||{};
+       const session=sessions[data.reservationId];
+       if(!session)return Response.json({error:"reservation_not_found"},{status:404});
+       if(session.callId)return Response.json({error:"already_bound"},{status:409});
+       sessions[data.reservationId]={...session,callId:data.callId};
+       await txn.put("sessions",sessions);
+       return Response.json({bound:true});
+      });
+    }
     if(url.pathname==="/internal/release"){
       let data;
       try{data=await request.json()}catch{return Response.json({error:"invalid_request"},{status:400})}
@@ -19,6 +35,11 @@ export class LabSessionLedger {
         const sessions=(await txn.get("sessions"))||{};
         if(!Object.hasOwn(sessions,data.reservationId))
          return Response.json({error:"reservation_not_found"},{status:404});
+        const session=sessions[data.reservationId];
+        if(session.callId && data.callId!==session.callId)
+         return Response.json({error:"bound_call_mismatch"},{status:409});
+        if(session.callId && data.providerAcknowledged!==true)
+         return Response.json({error:"termination_unconfirmed"},{status:409});
         delete sessions[data.reservationId];
         await txn.put("sessions",sessions);
         return Response.json({released:true});
