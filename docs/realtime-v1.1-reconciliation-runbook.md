@@ -3,8 +3,8 @@
 **Estado:** diagnóstico offline. No se ejecutan llamadas a OpenAI ni se libera capacidad automáticamente.
 
 ## Fuentes de verdad
-- `LabSessionLedger`: reserva, caducidad, vinculación `callId`, liberación explícita. La reserva caducada **permanece ocupada** hasta su liberación.
-- `AlarmLabLedger`: alarma persistente **separada** y simulaciones de terminación. El estado `mock_terminated` **no** prueba desconexión real ni libera capacidad del primer registro.
+- `LabSessionLedger`: reserva, caducidad, vinculación `callId`, **alarma nativa en el mismo Durable Object** y liberación explícita. Al vencer, marca `expired_unterminated` y conserva capacidad. Si falla la programación, marca `alarm_schedule_failed` y conserva capacidad.
+- `AlarmLabLedger`: laboratorio histórico de alarma **separada** y simulaciones de terminación. El estado `mock_terminated` **no** prueba desconexión real ni libera capacidad del primer registro.
 - `reconcileLabState`: compara ambos registros mediante stubs internos y devuelve un diagnóstico de solo lectura.
 
 ## Diagnóstico
@@ -17,6 +17,6 @@
 7. `reconciliation_unavailable`: falló consulta/estructura; detener el flujo y conservar capacidad.
 
 ## Puerta para pruebas pagadas
-Antes de solicitar autorización del usuario: unificar o enlazar de forma transaccional la reserva y el programador de alarmas, instalar un proceso de desconexión real desde servidor, verificar el estado de la llamada con evidencia del proveedor cuando esté disponible, controlar secretos y permisos, comprobar cierre en fallos y contar con supervisión del gasto. El ACK HTTP de hangup no es una garantía contractual de facturación. Ninguna conciliación debe liberar capacidad basándose únicamente en el reloj o en una simulación.
+Antes de solicitar autorización del usuario: verificar el funcionamiento y persistencia de la alarma nativa del mismo Durable Object en CI (la programación ocurre después de guardar la vinculación, por lo que un fallo queda marcado y bloquea nuevas admisiones), instalar un proceso de desconexión real desde servidor, verificar el estado de la llamada con evidencia del proveedor cuando esté disponible, controlar secretos y permisos, comprobar cierre en fallos y contar con supervisión del gasto. El ACK HTTP de hangup no es una garantía contractual de facturación. Ninguna conciliación debe liberar capacidad basándose únicamente en el reloj o en una simulación.
 
 **Prohibido:** exponer endpoints `/__local/*`, reutilizar credenciales sintéticas en producción, modificar Hub/WhatsApp, iniciar sesiones pagadas sin autorización.
