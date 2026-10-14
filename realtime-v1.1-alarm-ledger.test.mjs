@@ -58,3 +58,22 @@ test("first mock provider failure persists retry, second succeeds",async()=>{
  assert.equal((await storage.get("binding")).status,"mock_terminated");
  assert.equal((await storage.get("binding")).mockAttempts,2);
 });
+
+test("permanent mock provider failure exhausts retries and never claims termination",async()=>{
+ const m=new Map();const alarms=[];
+ const storage={get:async k=>m.get(k),put:async(k,v)=>m.set(k,v),setAlarm:async v=>alarms.push(v)};
+ const l=new AlarmLabLedger({storage},{MOCK_ALARM_TERMINATION:true,MOCK_ALARM_FAIL_ALWAYS:true});
+ const expiresAt=Date.now()+60000;
+ const r=await l.fetch(new Request("https://internal.invalid/internal/bind",{method:"POST",
+  headers:{"content-type":"application/json"},body:JSON.stringify({reservationId:id,callId:"rtc_12345678",expiresAt})}));
+ assert.equal(r.status,200);
+ await l.alarm();
+ assert.equal((await storage.get("binding")).status,"mock_retry_pending");
+ await l.alarm();
+ const result=await storage.get("binding");
+ assert.equal(result.status,"mock_termination_failed");
+ assert.equal(result.mockAttempts,2);
+ assert.equal(alarms.length,2);
+ await l.alarm();
+ assert.equal((await storage.get("binding")).mockAttempts,2);
+});
