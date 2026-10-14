@@ -23,6 +23,8 @@ jobs:
         run: node --test realtime-v1.1-admission.test.mjs
       - name: Test isolated lab access guard
         run: node --test realtime-v1.1-access.test.mjs
+      - name: Verify end-to-end offline unified WebRTC rehearsal
+        run: node --test realtime-v1.1-unified-rehearsal.test.mjs
       - name: Verify offline unified WebRTC SDP preparation
         run: node --test realtime-v1.1-unified-offer.test.mjs
       - name: Verify session termination and budget release gates
