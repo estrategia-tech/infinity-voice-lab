@@ -23,6 +23,8 @@ jobs:
         run: node --test realtime-v1.1-admission.test.mjs
       - name: Test isolated lab access guard
         run: node --test realtime-v1.1-access.test.mjs
+      - name: Verify persistent alarm candidate
+        run: node --test realtime-v1.1-alarm-ledger.test.mjs
       - name: Verify server-side timeout decision and binding
         run: node --test realtime-v1.1-timeout-coordinator.test.mjs
       - name: Verify provider termination before reservation release
