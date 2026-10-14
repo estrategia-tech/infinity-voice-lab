@@ -21,6 +21,8 @@ jobs:
         run: node --test realtime-v1.1-ledger.test.mjs
       - name: Test admission coordinator
         run: node --test realtime-v1.1-admission.test.mjs
+      - name: Test isolated lab access guard
+        run: node --test realtime-v1.1-access.test.mjs
       - name: Syntax-check browser candidate
         run: node --check realtime-v1.1-candidate.js
       - name: Syntax-check broker
