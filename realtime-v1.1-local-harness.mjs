@@ -18,7 +18,7 @@ export default {
      MOCK_LAB_ENABLED:true
     },
     ledgerStub:stub,
-    mockProvider:async()=> "v=0\\r\\nm=audio 9 UDP/TLS/RTP/SAVPF 111\\r\\n"
+    mockProvider:async()=> "v=0\r\nm=audio 9 UDP/TLS/RTP/SAVPF 111\r\n"
    });
    return Response.json(result,{status:result.status||500});
   }
