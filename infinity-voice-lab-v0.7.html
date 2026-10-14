@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="es-MX">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Infinity Voice Lab · v0.7</title>
+<style>
+:root{font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:#e9edf5;background:#0d1422}*{box-sizing:border-box}body{margin:0;min-height:100dvh;display:grid;place-items:center;padding:20px}.panel{width:min(100%,540px);padding:28px;border:1px solid #2d4057;border-radius:24px;background:#142035;box-shadow:0 24px 70px #0005}.eyebrow{letter-spacing:.16em;text-transform:uppercase;font-size:12px;color:#9bb2ca}h1{font-size:30px;margin:10px 0}p{line-height:1.55;color:#c3d0df}.pill{display:inline-block;border:1px solid #46637e;padding:7px 12px;border-radius:999px;font-size:12px;color:#d0e2f2}.controls{display:flex;gap:10px;flex-wrap:wrap;margin:25px 0}button{border:0;border-radius:13px;padding:15px 18px;font-weight:700;cursor:pointer;background:#d7c3a0;color:#162238}button.secondary{background:#2c4058;color:white}button:disabled{opacity:.5;cursor:not-allowed}.label{font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:#9bb2ca;margin:20px 0 7px}.text{min-height:55px;padding:14px;background:#0e192b;border-radius:12px;white-space:pre-wrap;line-height:1.5}small{display:block;margin-top:18px;color:#a9bad0;line-height:1.5}.warn{color:#ffcd94}
+</style>
+</head>
+<body><main class="panel">
+<div class="eyebrow">Infinity Living · Laboratorio independiente</div>
+<h1>Infinity Voice <span style="font-weight:400;color:#b9a17d">v0.7</span></h1>
+<p>Prueba local de micrófono, transcripción y voz. No conecta con OpenAI, Cloudflare ni Infinity Hub.</p>
+<span class="pill" id="state" role="status" aria-live="polite">Listo para comprobar compatibilidad</span>
+<div class="controls"><button id="start">🎙️ Hablar</button><button id="stop" class="secondary" disabled>Detener</button><button id="test" class="secondary">🔊 Probar audio</button></div>
+<div class="label">Escuché</div><div class="text" id="heard" aria-live="polite">Presiona «Hablar» y acepta el permiso del micrófono.</div>
+<div class="label">Respuesta de demostración</div><div class="text" id="answer" aria-live="polite">La respuesta será simulada. Todavía no es inteligencia artificial.</div>
+<small id="note">Recomendado: Chrome en Android, servido desde HTTPS. El reconocimiento de voz depende del navegador y puede utilizar servicios del proveedor del navegador.</small>
+</main>
+<script>
+(()=>{'use strict';const $=id=>document.getElementById(id),state=$('state'),heard=$('heard'),answer=$('answer'),start=$('start'),stop=$('stop'),test=$('test');const Recognition=window.SpeechRecognition||window.webkitSpeechRecognition;let rec=null,active=false;
+function status(msg){state.textContent=msg}function speak(t){if(!('speechSynthesis'in window)){status('Este navegador no admite síntesis de voz');return;}speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang='es-MX';u.rate=.96;u.onerror=()=>status('No se pudo reproducir la voz');speechSynthesis.speak(u)}
+function reply(t){const s=t.toLocaleLowerCase('es-MX');if(/hola|buenos/.test(s))return 'Hola. Soy una demostración local de Infinity Voice. El micrófono y el audio están funcionando.';if(/infinity|inmueble|propiedad/.test(s))return 'Infinity Living acompaña a sus clientes con asesoría inmobiliaria personalizada. Esta respuesta es de demostración, no información comercial verificada.';return 'Escuché: '+t+'. Esta es una respuesta simulada para probar la experiencia de voz.';}
+function reset(){active=false;start.disabled=false;stop.disabled=true;rec=null}
+if(!Recognition){start.disabled=true;status('Reconocimiento de voz no disponible');$('note').classList.add('warn');$('note').textContent='Este navegador no ofrece SpeechRecognition. Puedes probar la reproducción de audio o abrir la página en Chrome para Android mediante HTTPS.';}
+start.addEventListener('click',()=>{if(!Recognition||active)return;try{speechSynthesis?.cancel();rec=new Recognition();rec.lang='es-MX';rec.interimResults=false;rec.continuous=false;rec.onstart=()=>{active=true;start.disabled=true;stop.disabled=false;status('Escuchando…')};rec.onresult=e=>{const t=e.results[0][0].transcript;heard.textContent=t;const r=reply(t);answer.textContent=r;status('Respuesta simulada');speak(r)};rec.onerror=e=>{status('Error de micrófono: '+e.error);reset()};rec.onend=()=>{reset();if(state.textContent==='Escuchando…')status('Escucha finalizada')};rec.start()}catch(e){status('No se pudo iniciar el micrófono');reset()}});
+stop.addEventListener('click',()=>{try{rec?.stop()}catch{};reset();status('Detenido')});test.addEventListener('click',()=>{status('Probando reproducción de audio');speak('Hola, esta es una prueba de sonido de Infinity Voice Lab.')});
+})();
+</script></body></html>
