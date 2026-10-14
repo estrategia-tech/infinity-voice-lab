@@ -23,7 +23,7 @@ export default {
    return Response.json(result,{status:result.status||500});
   }
   // Test-only route; never deploy this harness publicly.
-  if(!["/__local/reserve","/__local/release","/__local/bind"].includes(url.pathname) || request.method!=="POST")
+  if(!["/__local/reserve","/__local/release","/__local/bind","/__local/status"].includes(url.pathname) || request.method!=="POST")
    return Response.json({error:"not_found"},{status:404});
   if(request.headers.get("x-local-test")!=="infinity-voice-v11")
    return Response.json({error:"forbidden"},{status:403});
