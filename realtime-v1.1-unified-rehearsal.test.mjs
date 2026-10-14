@@ -37,3 +37,11 @@ test("oversized body without content-length cannot reserve",async()=>{
  const l=ledger();const x=await rehearseUnifiedSession({request:req(sdp+"x".repeat(33000)),env,ledgerStub:l,mockProvider:async()=>sdp});
  assert.equal(x.status,413);assert.equal(l.count,0);
 });
+
+test("release HTTP 200 without confirmation remains unverified",async()=>{
+ const l=ledger();const original=l.fetch.bind(l);
+ l.fetch=async request=>new URL(request.url).pathname.endsWith("/release")?
+  Response.json({released:false}):original(request);
+ const x=await rehearseUnifiedSession({request:req(),env,ledgerStub:l,mockProvider:async()=>{throw Error("mock failure")}});
+ assert.equal(x.status,503);assert.equal(x.error,"mock_failed_release_unverified");
+});
