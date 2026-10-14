@@ -35,6 +35,23 @@ if(phase==="initial"){
  const first=await send();assert.equal(first.status,200);assert.equal(first.data.mock,true);
  const second=await send();assert.equal(second.status,429);
  console.log("PASS: real local DO, auth, SDP, offline mock and concurrency");
+}else if(phase==="reconciliation-status"){
+ const first=await reserve();assert.equal(first.status,200);
+ const status=async()=>{
+  const r=await fetch(base+"/__local/status",{method:"POST",headers:{"x-local-test":"infinity-voice-v11"}});
+  assert.equal(r.status,200);return r.json();
+ };
+ const initial=await status();
+ assert.equal(initial.reservations.length,1);
+ assert.equal(initial.reservations[0].reservationId,first.data.reservationId);
+ assert.equal(initial.reservations[0].callId,null);
+ const bind=await fetch(base+"/__local/bind",{method:"POST",headers:{"x-local-test":"infinity-voice-v11","content-type":"application/json"},body:JSON.stringify({reservationId:first.data.reservationId,callId:"rtc_12345678"})});
+ assert.equal(bind.status,200);
+ const bound=await status();assert.equal(bound.reservations[0].callId,"rtc_12345678");
+ assert.equal((await reserve()).status,429);
+ const publicStatus=await fetch(base+"/internal/status",{method:"POST"});
+ assert.equal(publicStatus.status,404);
+ console.log("PASS: read-only DO status tracks bound call without freeing reservation");
 }else if(phase==="bound-release"){
  const first=await reserve();assert.equal(first.status,200);
  const post=async(path,data,authorized=false)=>{
