@@ -1,6 +1,7 @@
 // Infinity Voice v1.1 — isolated Realtime browser candidate.
 // No OpenAI key here. This client requires an authenticated, lab-only token endpoint.
 // Intentionally not linked from index.html and never auto-starts.
+const REALTIME_BROWSER_ENABLED = false; // Release gate: no paid audio without explicit review.
 const $ = id => document.getElementById(id);
 const state = { pc: null, mic: null, remote: null, token: null, busy: false };
 const status = message => { $("status").textContent = message; };
@@ -13,6 +14,10 @@ function stop() {
   status("Desconectado. Micrófono liberado.");
 }
 async function start() {
+  if (!REALTIME_BROWSER_ENABLED) {
+    status("Pruebas de voz desactivadas. Se requiere autorización técnica y presupuestal.");
+    return;
+  }
   if (state.busy || state.pc) return;
   state.busy = true; $("start").disabled = true; $("stop").disabled = false;
   status("Solicitando autorización del laboratorio...");
@@ -52,6 +57,7 @@ async function start() {
     status(error.message || "Error de conexión");
   }
 }
+$("start").disabled = !REALTIME_BROWSER_ENABLED;
 $("start").addEventListener("click", start);
 $("stop").addEventListener("click", stop);
 window.addEventListener("pagehide", stop);
