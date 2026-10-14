@@ -5,6 +5,11 @@ const reserve=async()=>{const r=await fetch(base+"/__local/reserve",{method:"POS
 const health=await fetch(base+"/health");assert.equal(health.status,200);assert.equal((await health.json()).openai_enabled,false);
 const unauthorized=await fetch(base+"/__local/reserve",{method:"POST"});assert.equal(unauthorized.status,403);
 if(phase==="initial"){
+ const denied=await fetch(base+"/api/realtime/session",{method:"POST",headers:{"Origin":"https://estrategia-tech.github.io","Authorization":"Bearer synthetic"}});
+ assert.equal(denied.status,503);
+ assert.equal((await denied.json()).error,"lab_not_configured");
+ // Disabled session requests must not consume the Durable Object reservation.
+
  const first=await reserve();assert.equal(first.status,200);
  const blocked=await reserve();assert.equal(blocked.status,429);assert.equal(blocked.data.error,"concurrency_limit");
  console.log("PASS: local Durable Object enforces concurrent limit");
