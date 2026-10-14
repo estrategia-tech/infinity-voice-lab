@@ -48,3 +48,15 @@ test("storage failures never grant reservation",async()=>{
  const ledger=new LabSessionLedger({storage:{transaction:async()=>{throw Error("storage down")}}},{});
  await assert.rejects(()=>ledger.fetch(new Request("https://lab.invalid/internal/reserve",{method:"POST"})),/storage down/);
 });
+
+test("release frees concurrency but never refunds daily usage",async()=>{
+ const {call,map}=setup();
+ const first=await call();assert.equal(first.status,200);
+ const ledger=new LabSessionLedger({storage:{get:async k=>map.get(k),put:async(k,v)=>map.set(k,structuredClone(v)),transaction:async fn=>fn({get:async k=>map.get(k),put:async(k,v)=>map.set(k,structuredClone(v))})}},{});
+ const release=async body=>{const r=await ledger.fetch(new Request("https://lab.invalid/internal/release",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}));return {status:r.status,body:await r.json()}};
+ assert.equal((await release({reservationId:"bad"})).status,400);
+ assert.equal((await release({reservationId:first.body.reservationId})).status,200);
+ assert.equal((await release({reservationId:first.body.reservationId})).status,404);
+ assert.equal((await call()).status,200);
+ assert.equal(map.get("count"),2);
+});
