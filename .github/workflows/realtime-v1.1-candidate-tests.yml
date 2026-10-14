@@ -37,6 +37,8 @@ jobs:
         run: node --test realtime-v1.1-alarm-ledger.test.mjs
       - name: Verify server-side timeout decision and binding
         run: node --test realtime-v1.1-timeout-coordinator.test.mjs
+      - name: Verify reservation ownership before provider hangup
+        run: node --test realtime-v1.1-safe-termination.test.mjs
       - name: Verify provider termination before reservation release
         run: node --test realtime-v1.1-termination-coordinator.test.mjs
       - name: Verify provider hangup adapter is fail-closed
