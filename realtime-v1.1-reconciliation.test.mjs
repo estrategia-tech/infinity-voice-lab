@@ -47,3 +47,13 @@ test("same-DO alarm failures and expiration take precedence over separate mock",
  assert.equal(expired.results[0].status,"expired_unterminated");
  assert.equal(expired.requiresReview,true);
 });
+
+test("claimed and uncertain termination states are never treated as safe",async()=>{
+ const mock={reservationId:id,callId,status:"mock_terminated"};
+ for(const status of ["termination_claimed","termination_uncertain"]){
+  const result=await run([reservation({status})],mock);
+  assert.equal(result.results[0].status,status);
+  assert.equal(result.requiresReview,true);
+  assert.equal(result.autoReleased,false);
+ }
+});
