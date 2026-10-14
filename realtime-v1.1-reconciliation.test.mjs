@@ -37,3 +37,13 @@ test("pending nonexpired binding does not claim provider verification",async()=>
  const x=await run([reservation({expiresAt:300})],{reservationId:id,callId,status:"pending"});
  assert.equal(x.requiresReview,false);assert.equal(x.providerVerified,false);
 });
+
+test("same-DO alarm failures and expiration take precedence over separate mock",async()=>{
+ const mock={reservationId:id,callId,status:"mock_terminated"};
+ const schedule=await run([reservation({status:"alarm_schedule_failed"})],mock);
+ assert.equal(schedule.results[0].status,"alarm_schedule_failed");
+ assert.equal(schedule.autoReleased,false);
+ const expired=await run([reservation({status:"expired_unterminated"})],mock);
+ assert.equal(expired.results[0].status,"expired_unterminated");
+ assert.equal(expired.requiresReview,true);
+});
