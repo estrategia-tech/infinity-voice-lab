@@ -36,6 +36,12 @@ export class LabSessionLedger {
         if(!Object.hasOwn(sessions,data.reservationId))
          return Response.json({error:"reservation_not_found"},{status:404});
         const session=sessions[data.reservationId];
+        // A bound provider call can only be released by the server-side
+        // coordinator holding a separate internal capability.
+        if(session.callId && (typeof this.env?.INTERNAL_RELEASE_TOKEN!=="string" ||
+          this.env.INTERNAL_RELEASE_TOKEN.length<32 ||
+          request.headers.get("x-internal-release-token")!==this.env.INTERNAL_RELEASE_TOKEN))
+         return Response.json({error:"release_unauthorized"},{status:403});
         if(session.callId && data.callId!==session.callId)
          return Response.json({error:"bound_call_mismatch"},{status:409});
         if(session.callId && data.providerAcknowledged!==true)
