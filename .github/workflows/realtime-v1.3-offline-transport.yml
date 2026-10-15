@@ -1,0 +1,22 @@
+name: Infinity Voice v1.3 Offline Transport
+on:
+  push:
+    branches:
+      - lab/realtime-v1-1-candidate
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline-transport:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Verify mock transport
+        run: |
+          node --check realtime-v1.3-transport-candidate.mjs
+          node --check realtime-v1.3-transport-candidate.test.mjs
+          node --test realtime-v1.3-transport-candidate.test.mjs
