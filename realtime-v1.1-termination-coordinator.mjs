@@ -7,6 +7,8 @@ export async function terminateAndRelease({callId,reservationId,apiKey,transport
  if(!ledgerStub||typeof ledgerStub.fetch!=="function")return {ok:false,status:503,error:"ledger_unavailable"};
  if(typeof reservationId!=="string"||!/^[-a-f0-9]{36}$/i.test(reservationId))
   return {ok:false,status:400,error:"invalid_reservation_id"};
+ if(typeof claimId!=="string"||claimId.length<16)
+  return {ok:false,status:409,error:"termination_claim_required",releaseAttempted:false};
  const ended=await hangupRealtimeCall({callId,apiKey,transport,providerEnabled});
  if(!ended.ok)return {ok:false,status:ended.status,error:ended.error,releaseAttempted:false};
  try{
