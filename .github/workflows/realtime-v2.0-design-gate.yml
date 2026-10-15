@@ -18,5 +18,8 @@ jobs:
       - run: |
           node --check realtime-v2.0-provider-contract.mjs
           node --check realtime-v2.0-capability.mjs
+          node --check realtime-v2.0-provider-supervisor.mjs
           node --test realtime-v2.0-provider-contract.test.mjs
           node --test realtime-v2.0-capability.test.mjs
+          node --test realtime-v2.0-provider-supervisor.test.mjs
+          node --test realtime-v2.0-stage1-regression.test.mjs
