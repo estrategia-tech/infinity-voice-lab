@@ -57,10 +57,10 @@ export function enqueueOfflineAudioFrame(buffer, rawFrame) {
   if (frame.sequence < buffer.expectedSequence || buffer.frames.some((item) => item.sequence === frame.sequence)) {
     return { ok: false, error: "audio_replay_or_duplicate" };
   }
+  if (buffer.frames.length >= buffer.capacityFrames) return { ok: false, error: "audio_backpressure" };
   if (frame.sequence > buffer.expectedSequence + buffer.reorderWindowFrames) {
     return { ok: false, error: "jitter_window_exceeded" };
   }
-  if (buffer.frames.length >= buffer.capacityFrames) return { ok: false, error: "audio_backpressure" };
   const frames = [...buffer.frames, frame].sort((a, b) => a.sequence - b.sequence);
   return {
     ok: true,
