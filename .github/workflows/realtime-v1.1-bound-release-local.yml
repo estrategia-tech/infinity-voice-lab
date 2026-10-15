@@ -1,0 +1,33 @@
+name: Infinity Voice v1.1 Bound Release Local Test
+on:
+  push:
+    branches:
+      - lab/realtime-v1-1-candidate
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  bound-release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install isolated Wrangler
+        run: npm install --no-save --no-package-lock wrangler@4
+      - name: Verify claim-gated release on real local Durable Object
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx wrangler dev --local --config wrangler.realtime-v11-local.jsonc --port 8810 --persist-to /tmp/infinity-voice-v11-bound-gate > /tmp/v11-bound-gate.log 2>&1 &
+          pid=$!
+          trap 'kill "$pid" 2>/dev/null || true' EXIT
+          ready=0
+          for i in {1..35}; do
+            if curl -fsS http://127.0.0.1:8810/health >/dev/null 2>&1; then ready=1; break; fi
+            sleep 2
+          done
+          if [ "$ready" -ne 1 ]; then cat /tmp/v11-bound-gate.log; exit 1; fi
+          TEST_BASE_URL=http://127.0.0.1:8810 node realtime-v1.1-local-integration.mjs bound-release
