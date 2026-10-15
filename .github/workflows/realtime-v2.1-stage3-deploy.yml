@@ -73,13 +73,14 @@ jobs:
         run: npx wrangler deploy --config wrangler.realtime-v21-stage3.jsonc
 
       - name: Verify deployed Worker is still disabled
+        shell: bash
         run: |
-          curl --fail --silent --show-error \
-            https://infinity-voice-v21-stage3-lab.estrategia-a81.workers.dev/health \
-            | node --input-type=module <<'NODE'
-          let s='';
-          for await (const c of process.stdin) s += c;
-          const d = JSON.parse(s);
+          set -euo pipefail
+          HEALTH_JSON="$(curl --fail --silent --show-error \
+            https://infinity-voice-v21-stage3-lab.estrategia-a81.workers.dev/health)"
+          export HEALTH_JSON
+          node --input-type=module <<'NODE'
+          const d = JSON.parse(process.env.HEALTH_JSON);
           if (d.version !== '2.1.0-stage3-candidate') throw new Error('unexpected-version');
           if (d.live_enabled !== false) throw new Error('live-unexpectedly-enabled');
           if (d.static_emergency_stop !== true) throw new Error('emergency-stop-not-active');
