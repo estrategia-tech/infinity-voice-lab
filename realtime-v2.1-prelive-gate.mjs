@@ -44,7 +44,7 @@ export function evaluateLivePilotAdmission(input = {}) {
 
   if (input.liveAuthorization !== true) reasons.push("live-authorization-required");
   if (input.ownerApproval !== true) reasons.push("owner-approval-required");
-  if (input.legalPrivacyReview !== true) reasons.push("legal-privacy-review-required");
+  if (input.privacyOperationalReview !== true) reasons.push("privacy-operational-review-required");
   if (input.providerAccountReady !== true) reasons.push("provider-account-not-ready");
   if (input.openAiOutboundSipEnabled !== true) reasons.push("openai-outbound-sip-not-enabled");
   if (input.secretStoreReady !== true) reasons.push("secret-store-not-ready");
