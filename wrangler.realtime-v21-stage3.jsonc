@@ -1,0 +1,27 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "infinity-voice-v21-stage3-lab",
+  "main": "realtime-v2.1-stage3-worker.mjs",
+  "compatibility_date": "2026-10-14",
+  "workers_dev": true,
+  "vars": {
+    "LIVE_ENABLED": "false",
+    "EMERGENCY_STOP": "true",
+    "OPENAI_ALPHA_VALUE": "quicksilver=v3",
+    "OPENAI_VOICE": "marin"
+  },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "STAGE3_CONTROL",
+        "class_name": "Stage3Control"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["Stage3Control"]
+    }
+  ]
+}
