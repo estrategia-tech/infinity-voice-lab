@@ -21,4 +21,6 @@ jobs:
           node --check realtime-v1.4-conversation-brain.test.mjs
           node --check realtime-v1.4-safety-gate.mjs
           node --check realtime-v1.4-safety-gate.test.mjs
-          node --test realtime-v1.4-conversation-brain.test.mjs realtime-v1.4-safety-gate.test.mjs
+          node --check realtime-v1.4-dialogue-orchestrator.mjs
+          node --check realtime-v1.4-dialogue-orchestrator.test.mjs
+          node --test realtime-v1.4-conversation-brain.test.mjs realtime-v1.4-safety-gate.test.mjs realtime-v1.4-dialogue-orchestrator.test.mjs
