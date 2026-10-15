@@ -11,12 +11,12 @@ v2.0 se divide en cinco etapas de igual peso (20% cada una). El porcentaje de un
 Objetivo: definir un límite de proveedor auditable, credenciales de corta duración y controles de autorización que fallen cerrado antes de cualquier conexión real.
 
 1. **Contrato de proveedor simulado, ciclo de vida y evidencia de cierre** — VALIDADO.
-2. **Credencial firmada offline, efímera, acotada a sesión/scope/TTL y con protección de replay** — IMPLEMENTADO; requiere Design Only Gate verde en el commit final de esta actualización para quedar VALIDADO.
+2. **Credencial firmada offline, efímera, acotada a sesión/scope/TTL y con protección de replay** — VALIDADO. Design Only Gate verde en el candidato; 6/6 pruebas específicas de capability aprobadas, además de 2/2 pruebas del contrato del proveedor.
 3. **Revocación, binding de origen/contexto y límites de autorización** — PENDIENTE.
 4. **Timeout/cancelación del proveedor y semántica de terminación verificable** — PENDIENTE.
 5. **Threat model, criterios de salida y gate de regresión de Etapa 1** — PENDIENTE.
 
-Progreso verificable antes del gate final de esta actualización: **20% de Etapa 1 / 4% global**. Si el reto 2 queda verde: **40% de Etapa 1 / 8% global**.
+**Progreso actual: 40% de Etapa 1 / 8% global.**
 
 ## Etapa 2 — Motor de audio preparado para tiempo real
 
