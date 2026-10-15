@@ -28,3 +28,8 @@ The public candidate broker exposes only GET `/health` and a permanently disable
 When the provider does not acknowledge termination, `finish-termination` marks `termination_uncertain` and retains capacity. If the coordinator crashes after claiming, the reservation remains in `termination_claimed` and capacity is **not** automatically released. Both states require operator review; they are not evidence of a stopped provider call.
 
 **Remaining controls before paid use:** an authenticated, auditable recovery workflow for stuck claims; idempotent handling of retries; evidence-backed provider termination; secret provisioning and end-to-end operator authorization. The older `/internal/release` and low-level termination adapter remain available for offline compatibility and must not be wired to public routes.
+
+## Atomic termination claim (offline candidate)
+The primary reservation Durable Object now exposes private, token-guarded `/internal/claim-termination` and `/internal/abort-termination`. A transaction assigns a single `claimId`; competing claims return HTTP 409. The strict coordinator claims before an injected mock provider hangup and includes `claimId` on release. If provider or release fails, it marks the claim `termination_unconfirmed` and keeps capacity occupied. A failed claim is **not** automatically retried, cleared or reassigned.
+
+This is a **safety-first, potentially stuck** design. Before paid activation, add a server-side operator reconciliation procedure with auditable provider evidence and an explicit, authorized retry/override policy. The low-level coordinator remains an internal building block, not a public API.
