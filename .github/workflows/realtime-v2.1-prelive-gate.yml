@@ -1,0 +1,29 @@
+name: Infinity Voice v2.1 Pre-Live Gate
+
+on:
+  push:
+    branches: [lab/realtime-v1-1-candidate]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  prelive:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax check v2.1 policy
+        run: node --check realtime-v2.1-prelive-gate.mjs
+      - name: Verify pre-live fail-closed policy
+        run: node --test realtime-v2.1-prelive-gate.test.mjs
+      - name: Verify no provider/network execution in v2.1 gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -nE 'fetch\s*\(|new WebSocket|wss://|https://api\.openai\.com|api\.telnyx\.com|TWILIO_|TELNYX_|OPENAI_API_KEY' realtime-v2.1-prelive-gate.mjs
+      - name: Preserve v2.0 offline acceptance
+        run: node --test realtime-v2.0-stage5-acceptance.test.mjs

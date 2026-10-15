@@ -1,0 +1,19 @@
+# Dependencies / local runtime
+node_modules/
+.wrangler/
+
+# Secrets — never commit
+.env
+.env.*
+!.env.example
+.dev.vars
+.dev.vars.*
+*.pem
+*.key
+*.p12
+*.pfx
+secrets*.json
+
+# OS / editor
+.DS_Store
+Thumbs.db
