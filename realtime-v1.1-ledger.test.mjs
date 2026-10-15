@@ -82,9 +82,12 @@ test("bound provider call cannot be released without matching confirmed identity
  assert.equal((await post("/internal/bind",{reservationId,callId:"rtc_12345678"})).status,409);
  assert.equal((await post("/internal/release",{reservationId})).body.error,"release_unauthorized");
  assert.equal((await post("/internal/release",{reservationId,callId:"rtc_12345678",providerAcknowledged:true})).status,403);
- assert.equal((await post("/internal/release",{reservationId,callId:"rtc_12345678"},true)).body.error,"termination_unconfirmed");
+ assert.equal((await post("/internal/release",{reservationId,callId:"rtc_12345678"},true)).body.error,"termination_claim_required");
  assert.equal((await call()).body.error,"concurrency_limit");
- assert.equal((await post("/internal/release",{reservationId,callId:"rtc_12345678",providerAcknowledged:true},true)).status,200);
+ assert.equal((await post("/internal/release",{reservationId,callId:"rtc_12345678",providerAcknowledged:true},true)).status,409);
+ const claim=await post("/internal/claim-termination",{reservationId,callId:"rtc_12345678"},true);
+ assert.equal(claim.status,200);
+ assert.equal((await post("/internal/release",{reservationId,callId:"rtc_12345678",claimId:claim.body.claimId,providerAcknowledged:true},true)).status,200);
  assert.equal((await call()).status,200);
 });
 
