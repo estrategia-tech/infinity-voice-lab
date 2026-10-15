@@ -81,6 +81,29 @@ if(phase==="initial"){
  const publicStatus=await fetch(base+"/internal/status",{method:"POST"});
  assert.equal(publicStatus.status,404);
  console.log("PASS: read-only DO status tracks bound call without freeing reservation");
+}else if(phase==="atomic-claim"){
+ const first=await reserve();assert.equal(first.status,200);
+ const post=async(path,data,authorized=true)=>{
+  const r=await fetch(base+"/__local/"+path,{method:"POST",headers:{
+   "x-local-test":"infinity-voice-v11","content-type":"application/json",
+   ...(authorized?{"x-local-authorized-release":"yes"}:{})
+  },body:JSON.stringify(data)});
+  return {status:r.status,data:await r.json()};
+ };
+ const binding={reservationId:first.data.reservationId,callId:"rtc_atomic123"};
+ assert.equal((await post("bind",binding)).status,200);
+ assert.equal((await post("claim-termination",binding,false)).status,403);
+ const results=await Promise.all(Array.from({length:12},()=>post("claim-termination",binding)));
+ assert.equal(results.filter(r=>r.status===200).length,1);
+ assert.equal(results.filter(r=>r.status===409).length,11);
+ const claimId=results.find(r=>r.status===200).data.claimId;
+ assert.ok(claimId);
+ assert.equal((await post("release",{...binding,providerAcknowledged:true,claimId:"incorrect"})).status,409);
+ assert.equal((await post("abort-termination",{...binding,claimId})).status,200);
+ assert.equal((await post("claim-termination",binding)).status,409);
+ assert.equal((await reserve()).status,429);
+ assert.equal((await fetch(base+"/internal/claim-termination",{method:"POST"})).status,404);
+ console.log("PASS: 12 simultaneous claims yield exactly one winner, uncertain call remains occupied");
 }else if(phase==="bound-release"){
  const first=await reserve();assert.equal(first.status,200);
  const post=async(path,data,authorized=false)=>{
