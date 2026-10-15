@@ -144,7 +144,8 @@ export class LabSessionLedger {
          return Response.json({error:"bound_call_mismatch"},{status:409});
         if(session.callId && session.terminationClaim && session.status==="termination_unconfirmed")
          return Response.json({error:"termination_requires_review"},{status:409});
-        if(session.callId && !session.terminationClaim && data.claimId)
+        if(session.callId && !session.terminationClaim)
+         return Response.json({error:"termination_claim_required"},{status:409});
          return Response.json({error:"claim_not_found"},{status:409});
         if(session.callId && session.terminationClaim && data.claimId!==session.terminationClaim)
          return Response.json({error:"claim_mismatch"},{status:409});
