@@ -1,0 +1,88 @@
+name: Infinity Voice v2.1 Stage3 Fail-Closed Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_worker:
+        description: 'Type infinity-voice-v21-stage3-lab'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: infinity-voice-v21-stage3-lab-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy-disabled-lab:
+    if: inputs.confirm_worker == 'infinity-voice-v21-stage3-lab'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+
+    steps:
+      - name: Checkout only the authorized lab branch
+        uses: actions/checkout@v4
+        with:
+          ref: lab/realtime-v1-1-candidate
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Verify Cloudflare deployment credentials exist
+        env:
+          CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          test -n "$CF_TOKEN" || { echo 'Missing CLOUDFLARE_API_TOKEN'; exit 1; }
+          test -n "$CF_ACCOUNT" || { echo 'Missing CLOUDFLARE_ACCOUNT_ID'; exit 1; }
+          echo 'Cloudflare deployment credentials: present'
+
+      - name: Prove deployment remains fail-closed
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const c = JSON.parse(fs.readFileSync('wrangler.realtime-v21-stage3.jsonc', 'utf8'));
+          if (c.name !== 'infinity-voice-v21-stage3-lab') throw new Error('unexpected-worker-name');
+          if (c.vars?.LIVE_ENABLED !== 'false') throw new Error('LIVE_ENABLED must remain false');
+          if (c.vars?.EMERGENCY_STOP !== 'true') throw new Error('EMERGENCY_STOP must remain true');
+          console.log('PASS: deployment cannot accept a live call');
+          NODE
+
+      - name: Run Stage3 unit/security tests
+        run: |
+          node --test realtime-v2.1-stage3-preflight.test.mjs
+          node --test realtime-v2.1-openai-webhook-security.test.mjs
+          node --test realtime-v2.1-stage3-worker.test.mjs
+
+      - name: Install isolated Wrangler
+        run: npm install --no-save --no-package-lock wrangler@4
+
+      - name: Validate bundle
+        run: npx wrangler deploy --config wrangler.realtime-v21-stage3.jsonc --dry-run
+
+      - name: Deploy isolated Stage3 Worker with live disabled
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler deploy --config wrangler.realtime-v21-stage3.jsonc
+
+      - name: Verify deployed Worker is still disabled
+        run: |
+          curl --fail --silent --show-error \
+            https://infinity-voice-v21-stage3-lab.estrategia-a81.workers.dev/health \
+            | node --input-type=module <<'NODE'
+          let s='';
+          for await (const c of process.stdin) s += c;
+          const d = JSON.parse(s);
+          if (d.version !== '2.1.0-stage3-candidate') throw new Error('unexpected-version');
+          if (d.live_enabled !== false) throw new Error('live-unexpectedly-enabled');
+          if (d.static_emergency_stop !== true) throw new Error('emergency-stop-not-active');
+          if (d.customer_traffic !== false) throw new Error('customer-traffic-not-disabled');
+          console.log('PASS: Stage3 Worker deployed fail-closed');
+          NODE
