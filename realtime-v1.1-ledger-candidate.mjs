@@ -20,7 +20,7 @@ export class LabSessionLedger {
   }
   async fetch(request) {
     const url=new URL(request.url);
-    if (!["/internal/reserve","/internal/release","/internal/bind","/internal/status","/internal/claim-termination","/internal/finish-termination"].includes(url.pathname) || request.method!=="POST")
+    if (!["/internal/reserve","/internal/release","/internal/bind","/internal/status","/internal/claim-termination","/internal/finish-termination","/internal/abort-termination"].includes(url.pathname) || request.method!=="POST")
       return Response.json({error:"not_found"},{status:404});
     // This is internal-only: the public broker must never expose this endpoint.
     if(url.pathname==="/internal/status"){
@@ -109,28 +109,16 @@ export class LabSessionLedger {
        return Response.json({released:true});
       });
     }
-    if(url.pathname==="/internal/claim-termination"||url.pathname==="/internal/abort-termination"){
+    if(url.pathname==="/internal/abort-termination"){
       let data;try{data=await request.json()}catch{return Response.json({error:"invalid_request"},{status:400})}
-      if(typeof data?.reservationId!=="string"||!/^[-a-f0-9]{36}$/i.test(data.reservationId)||
-         typeof data?.callId!=="string"||!/^rtc_[A-Za-z0-9_-]{6,128}$/.test(data.callId))
-       return Response.json({error:"invalid_binding"},{status:400});
       if(typeof this.env?.INTERNAL_RELEASE_TOKEN!=="string"||this.env.INTERNAL_RELEASE_TOKEN.length<32||
          request.headers.get("x-internal-release-token")!==this.env.INTERNAL_RELEASE_TOKEN)
        return Response.json({error:"termination_unauthorized"},{status:403});
       return this.state.storage.transaction(async txn=>{
        const sessions=(await txn.get("sessions"))||{};
-       const s=sessions[data.reservationId];
-       if(!s||s.callId!==data.callId)return Response.json({error:"binding_mismatch"},{status:409});
-       if(url.pathname==="/internal/claim-termination"){
-        if(s.terminationClaim)return Response.json({error:"termination_already_claimed"},{status:409});
-        const claimId=crypto.randomUUID();
-        sessions[data.reservationId]={...s,terminationClaim:claimId,status:"termination_claimed"};
-        await txn.put("sessions",sessions);
-        return Response.json({claimed:true,claimId});
-       }
-       if(!s.terminationClaim||data.claimId!==s.terminationClaim)
+       const s=sessions[data?.reservationId];
+       if(!s||s.callId!==data.callId||!s.terminationClaim||s.terminationClaim!==data.claimId)
         return Response.json({error:"claim_mismatch"},{status:409});
-       // Ambiguous provider outcome: preserve claim and capacity for review.
        sessions[data.reservationId]={...s,status:"termination_unconfirmed"};
        await txn.put("sessions",sessions);
        return Response.json({aborted:true,requiresReview:true});
