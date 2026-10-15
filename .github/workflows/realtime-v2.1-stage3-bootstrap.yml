@@ -42,6 +42,7 @@ jobs:
           node --test realtime-v2.1-stage3-preflight.test.mjs
           node --test realtime-v2.1-openai-webhook-security.test.mjs
           node --test realtime-v2.1-stage3-worker.test.mjs
+          node --test realtime-v2.1-stage3-readiness.test.mjs
 
       - name: Preserve v2.1 pre-live gate
         run: node --test realtime-v2.1-prelive-gate.test.mjs
