@@ -19,4 +19,6 @@ jobs:
         run: |
           node --check realtime-v1.3-transport-candidate.mjs
           node --check realtime-v1.3-transport-candidate.test.mjs
-          node --test realtime-v1.3-transport-candidate.test.mjs
+          node --check realtime-v1.3-session-transport.mjs
+          node --check realtime-v1.3-session-transport.test.mjs
+          node --test realtime-v1.3-transport-candidate.test.mjs realtime-v1.3-session-transport.test.mjs
