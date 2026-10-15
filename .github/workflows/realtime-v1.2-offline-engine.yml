@@ -1,0 +1,22 @@
+name: Infinity Voice v1.2 Offline Session Engine
+on:
+  push:
+    branches:
+      - lab/realtime-v1-1-candidate
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline-session:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Syntax and offline transition tests
+        run: |
+          node --check realtime-v1.2-session-engine.mjs
+          node --check realtime-v1.2-session-engine.test.mjs
+          node --test realtime-v1.2-session-engine.test.mjs
