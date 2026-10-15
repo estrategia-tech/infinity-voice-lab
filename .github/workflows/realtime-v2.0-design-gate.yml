@@ -27,6 +27,10 @@ jobs:
           node --check realtime-v2.0-tool-policy.mjs
           node --check realtime-v2.0-commercial-policy.mjs
           node --check realtime-v2.0-conversation-orchestrator.mjs
+          node --check realtime-v2.0-session-guard.mjs
+          node --check realtime-v2.0-runtime-guard.mjs
+          node --check realtime-v2.0-privacy-guard.mjs
+          node --check realtime-v2.0-resilience.mjs
           node --test realtime-v2.0-provider-contract.test.mjs
           node --test realtime-v2.0-capability.test.mjs
           node --test realtime-v2.0-provider-supervisor.test.mjs
@@ -41,3 +45,8 @@ jobs:
           node --test realtime-v2.0-commercial-policy.test.mjs
           node --test realtime-v2.0-conversation-orchestrator.test.mjs
           node --test realtime-v2.0-stage3-regression.test.mjs
+          node --test realtime-v2.0-session-guard.test.mjs
+          node --test realtime-v2.0-runtime-guard.test.mjs
+          node --test realtime-v2.0-privacy-guard.test.mjs
+          node --test realtime-v2.0-resilience.test.mjs
+          node --test realtime-v2.0-stage4-regression.test.mjs
