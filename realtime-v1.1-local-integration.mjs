@@ -119,7 +119,10 @@ if(phase==="initial"){
  assert.equal((await post("release",{reservationId,callId:"rtc_wrong123",providerAcknowledged:true},true)).status,409);
  assert.equal((await post("release",{reservationId,callId},true)).status,409);
  assert.equal((await reserve()).status,429);
- assert.equal((await post("release",{reservationId,callId,providerAcknowledged:true},true)).status,200);
+ assert.equal((await post("release",{reservationId,callId,providerAcknowledged:true},true)).status,409);
+ const claim=await post("claim-termination",{reservationId,callId},true);
+ assert.equal(claim.status,200);
+ assert.equal((await post("release",{reservationId,callId,claimId:claim.data.claimId,providerAcknowledged:true},true)).status,200);
  assert.equal((await reserve()).status,200);
  console.log("PASS: real local DO blocks forged release and requires server capability");
 }else throw Error("unknown phase");
