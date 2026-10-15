@@ -31,6 +31,7 @@ jobs:
           node --check realtime-v2.0-runtime-guard.mjs
           node --check realtime-v2.0-privacy-guard.mjs
           node --check realtime-v2.0-resilience.mjs
+          node --check realtime-v2.0-pilot-gate.mjs
           node --test realtime-v2.0-provider-contract.test.mjs
           node --test realtime-v2.0-capability.test.mjs
           node --test realtime-v2.0-provider-supervisor.test.mjs
@@ -50,3 +51,6 @@ jobs:
           node --test realtime-v2.0-privacy-guard.test.mjs
           node --test realtime-v2.0-resilience.test.mjs
           node --test realtime-v2.0-stage4-regression.test.mjs
+          node --test realtime-v2.0-pilot-gate.test.mjs
+          node --test realtime-v2.0-offline-boundary.test.mjs
+          node --test realtime-v2.0-stage5-acceptance.test.mjs
