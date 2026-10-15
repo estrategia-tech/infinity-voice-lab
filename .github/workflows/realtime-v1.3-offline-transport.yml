@@ -21,4 +21,8 @@ jobs:
           node --check realtime-v1.3-transport-candidate.test.mjs
           node --check realtime-v1.3-session-transport.mjs
           node --check realtime-v1.3-session-transport.test.mjs
-          node --test realtime-v1.3-transport-candidate.test.mjs realtime-v1.3-session-transport.test.mjs
+          node --check realtime-v1.3-timeout-policy.mjs
+          node --check realtime-v1.3-timeout-policy.test.mjs
+          node --check realtime-v1.3-auth-boundary.mjs
+          node --check realtime-v1.3-auth-boundary.test.mjs
+          node --test realtime-v1.3-transport-candidate.test.mjs realtime-v1.3-session-transport.test.mjs realtime-v1.3-timeout-policy.test.mjs realtime-v1.3-auth-boundary.test.mjs
