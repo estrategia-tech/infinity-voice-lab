@@ -44,32 +44,14 @@ test("rejects duplicate replay wrong stream binding and excessive jitter", () =>
   assert.deepEqual(enqueueOfflineAudioFrame(buffer, wrong), { ok: false, error: "audio_stream_binding_mismatch" });
 });
 
-test("enforces bounded capacity with backpressure", () => {
+test("enforces bounded capacity with explicit backpressure", () => {
   let buffer = createOfflineJitterBuffer({ direction: "input", capacityFrames: 2, reorderWindowFrames: 1 }).buffer;
   buffer = enqueueOfflineAudioFrame(buffer, frame(1)).buffer;
   buffer = enqueueOfflineAudioFrame(buffer, frame(2)).buffer;
-  assert.deepEqual(enqueueOfflineAudioFrame(buffer, createSyntheticOfflineAudioFrame({
-    streamEpoch: 1,
-    sequence: 2,
-    timestampMs: 1_040,
-    direction: "input",
-  }).frame), { ok: false, error: "audio_replay_or_duplicate" });
-  const future = createOfflineJitterBuffer({
-    direction: "input",
-    capacityFrames: 2,
-    reorderWindowFrames: 1,
-    expectedSequence: 5,
-  }).buffer;
-  let full = enqueueOfflineAudioFrame(future, createSyntheticOfflineAudioFrame({
-    streamEpoch: 1, sequence: 5, timestampMs: 2_000, direction: "input",
-  }).frame).buffer;
-  full = enqueueOfflineAudioFrame(full, createSyntheticOfflineAudioFrame({
-    streamEpoch: 1, sequence: 6, timestampMs: 2_020, direction: "input",
-  }).frame).buffer;
-  const raw7 = createSyntheticOfflineAudioFrame({
-    streamEpoch: 1, sequence: 7, timestampMs: 2_040, direction: "input",
-  }).frame;
-  assert.equal(enqueueOfflineAudioFrame(full, raw7).ok, false);
+  assert.deepEqual(enqueueOfflineAudioFrame(buffer, frame(3)), {
+    ok: false,
+    error: "audio_backpressure",
+  });
 });
 
 test("rejects unsafe buffer configuration", () => {
