@@ -19,4 +19,6 @@ jobs:
         run: |
           node --check realtime-v1.2-session-engine.mjs
           node --check realtime-v1.2-session-engine.test.mjs
-          node --test realtime-v1.2-session-engine.test.mjs
+          node --check realtime-v1.2-event-queue.mjs
+          node --check realtime-v1.2-event-queue.test.mjs
+          node --test realtime-v1.2-session-engine.test.mjs realtime-v1.2-event-queue.test.mjs
