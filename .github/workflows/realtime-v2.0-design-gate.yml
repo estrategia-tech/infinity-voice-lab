@@ -23,6 +23,10 @@ jobs:
           node --check realtime-v2.0-audio-buffer.mjs
           node --check realtime-v2.0-audio-turn-controller.mjs
           node --check realtime-v2.0-audio-stream.mjs
+          node --check realtime-v2.0-model-contract.mjs
+          node --check realtime-v2.0-tool-policy.mjs
+          node --check realtime-v2.0-commercial-policy.mjs
+          node --check realtime-v2.0-conversation-orchestrator.mjs
           node --test realtime-v2.0-provider-contract.test.mjs
           node --test realtime-v2.0-capability.test.mjs
           node --test realtime-v2.0-provider-supervisor.test.mjs
@@ -32,3 +36,8 @@ jobs:
           node --test realtime-v2.0-audio-turn-controller.test.mjs
           node --test realtime-v2.0-audio-stream.test.mjs
           node --test realtime-v2.0-stage2-regression.test.mjs
+          node --test realtime-v2.0-model-contract.test.mjs
+          node --test realtime-v2.0-tool-policy.test.mjs
+          node --test realtime-v2.0-commercial-policy.test.mjs
+          node --test realtime-v2.0-conversation-orchestrator.test.mjs
+          node --test realtime-v2.0-stage3-regression.test.mjs
