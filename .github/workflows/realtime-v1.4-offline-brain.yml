@@ -1,0 +1,24 @@
+name: Infinity Voice v1.4 Offline Conversation Brain
+on:
+  push:
+    branches:
+      - lab/realtime-v1-1-candidate
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline-brain:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Test offline brain and safety gate
+        run: |
+          node --check realtime-v1.4-conversation-brain.mjs
+          node --check realtime-v1.4-conversation-brain.test.mjs
+          node --check realtime-v1.4-safety-gate.mjs
+          node --check realtime-v1.4-safety-gate.test.mjs
+          node --test realtime-v1.4-conversation-brain.test.mjs realtime-v1.4-safety-gate.test.mjs
