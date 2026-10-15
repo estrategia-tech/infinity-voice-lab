@@ -57,3 +57,18 @@ test("claimed and uncertain termination states are never treated as safe",async(
   assert.equal(result.autoReleased,false);
  }
 });
+
+test("claimed or unconfirmed termination never looks pending or verified",async()=>{
+ const mock={reservationId:id,callId,status:"pending"};
+ for(const [input,expected] of [
+  [{status:"termination_claimed"},"termination_claimed"],
+  [{status:"termination_unconfirmed"},"termination_unconfirmed"],
+  [{status:"termination_uncertain"},"termination_uncertain"],
+  [{status:"pending",terminationClaimed:true},"termination_claim_present"]
+ ]){
+  const result=await run([reservation({expiresAt:300,...input})],mock);
+  assert.equal(result.results[0].status,expected);
+  assert.equal(result.requiresReview,true);
+  assert.equal(result.autoReleased,false);
+ }
+});
