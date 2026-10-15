@@ -154,7 +154,9 @@ export class LabSessionLedger {
          return Response.json({error:"release_unauthorized"},{status:403});
         if(session.callId && data.callId!==session.callId)
          return Response.json({error:"bound_call_mismatch"},{status:409});
-        if(session.callId && session.terminationClaim && data.claimId!==session.terminationClaim)\n         return Response.json({error:"claim_mismatch"},{status:409});\n        if(session.callId && data.providerAcknowledged!==true)
+        if(session.callId && session.terminationClaim && data.claimId!==session.terminationClaim)
+         return Response.json({error:"claim_mismatch"},{status:409});
+        if(session.callId && data.providerAcknowledged!==true)
          return Response.json({error:"termination_unconfirmed"},{status:409});
         delete sessions[data.reservationId];
         await txn.put("sessions",sessions);
