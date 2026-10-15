@@ -19,7 +19,16 @@ jobs:
           node --check realtime-v2.0-provider-contract.mjs
           node --check realtime-v2.0-capability.mjs
           node --check realtime-v2.0-provider-supervisor.mjs
+          node --check realtime-v2.0-audio-frame.mjs
+          node --check realtime-v2.0-audio-buffer.mjs
+          node --check realtime-v2.0-audio-turn-controller.mjs
+          node --check realtime-v2.0-audio-stream.mjs
           node --test realtime-v2.0-provider-contract.test.mjs
           node --test realtime-v2.0-capability.test.mjs
           node --test realtime-v2.0-provider-supervisor.test.mjs
           node --test realtime-v2.0-stage1-regression.test.mjs
+          node --test realtime-v2.0-audio-frame.test.mjs
+          node --test realtime-v2.0-audio-buffer.test.mjs
+          node --test realtime-v2.0-audio-turn-controller.test.mjs
+          node --test realtime-v2.0-audio-stream.test.mjs
+          node --test realtime-v2.0-stage2-regression.test.mjs
