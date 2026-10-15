@@ -1,0 +1,20 @@
+name: Infinity Voice v2.0 Design Only Gate
+on:
+  push:
+    branches:
+      - lab/realtime-v1-1-candidate
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: |
+          node --check realtime-v2.0-provider-contract.mjs
+          node --test realtime-v2.0-provider-contract.test.mjs
