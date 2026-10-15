@@ -20,6 +20,8 @@ export async function reconcileLabState({ledgerStub,alarmStub,now=Date.now()}={}
    const expired=reservation.expiresAt<=now;
    const status=reservation.status==="termination_claimed"?"termination_claimed":
     reservation.status==="termination_uncertain"?"termination_uncertain":
+    reservation.status==="termination_unconfirmed"?"termination_unconfirmed":
+    reservation.terminationClaimed===true?"termination_claim_present":
     reservation.status==="alarm_schedule_failed"?"alarm_schedule_failed":
     reservation.status==="expired_unterminated"?"expired_unterminated":
     !reservation.callId?"unbound_reservation":
