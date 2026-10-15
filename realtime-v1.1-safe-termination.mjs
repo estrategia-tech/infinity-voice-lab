@@ -23,5 +23,26 @@ export async function safeTerminateBoundCall(options={}){
   if(!["pending","expired_unterminated","alarm_schedule_failed"].includes(match[0].status))
    return {ok:false,status:409,error:"binding_invalid_state",releaseAttempted:false};
  }catch{return {ok:false,status:503,error:"binding_unverified",releaseAttempted:false}}
- return terminateAndRelease(options);
+ // Atomic ownership claim prevents two coordinators hanging up the same call.
+ if(typeof options.releaseToken!=="string"||options.releaseToken.length<32)
+  return {ok:false,status:503,error:"termination_capability_missing",releaseAttempted:false};
+ const headers={"content-type":"application/json","x-internal-release-token":options.releaseToken};
+ const request=(path,body)=>new Request("https://internal.invalid"+path,{
+  method:"POST",headers,body:JSON.stringify(body)
+ });
+ let claimId;
+ try{
+  const response=await ledgerStub.fetch(request("/internal/claim-termination",{reservationId,callId}));
+  if(!response.ok)return {ok:false,status:response.status,error:"termination_claim_refused",releaseAttempted:false};
+  const data=await response.json();
+  if(data?.claimed!==true||typeof data.claimId!=="string")
+   return {ok:false,status:503,error:"termination_claim_unverified",releaseAttempted:false};
+  claimId=data.claimId;
+ }catch{return {ok:false,status:503,error:"termination_claim_unverified",releaseAttempted:false}}
+ const result=await terminateAndRelease({...options,claimId});
+ if(!result.ok){
+  // Never unlock an ambiguous provider outcome: operator reconciliation required.
+  try{await ledgerStub.fetch(request("/internal/abort-termination",{reservationId,callId,claimId}))}catch{}
+ }
+ return result;
 }
