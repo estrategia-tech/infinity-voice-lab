@@ -23,6 +23,11 @@ export async function safeTerminateBoundCall(options={}){
   if(!["pending","expired_unterminated","alarm_schedule_failed"].includes(match[0].status))
    return {ok:false,status:409,error:"binding_invalid_state",releaseAttempted:false};
  }catch{return {ok:false,status:503,error:"binding_unverified",releaseAttempted:false}}
+ // Refuse disabled or unconfigured providers BEFORE consuming an exclusive claim.
+ if(options.providerEnabled!==true)
+  return {ok:false,status:403,error:"provider_disabled",releaseAttempted:false};
+ if(typeof options.apiKey!=="string"||options.apiKey.length<16||typeof options.transport!=="function")
+  return {ok:false,status:503,error:"provider_not_configured",releaseAttempted:false};
  // Atomic ownership claim prevents two coordinators hanging up the same call.
  if(typeof options.releaseToken!=="string"||options.releaseToken.length<32)
   return {ok:false,status:503,error:"termination_capability_missing",releaseAttempted:false};
