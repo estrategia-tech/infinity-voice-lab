@@ -159,6 +159,7 @@ test("atomic termination claim rejects duplicates and requires claim for release
  const first=(await post("/internal/reserve")).body;
  const binding={reservationId:first.reservationId,callId:"rtc_12345678"};
  assert.equal((await post("/internal/bind",binding)).status,200);
+ assert.equal((await post("/internal/release",{...binding,claimId:"forged",providerAcknowledged:true})).status,409);
  assert.equal((await post("/internal/claim-termination",binding,false)).status,403);
  const claim=await post("/internal/claim-termination",binding);
  assert.equal(claim.status,200);
