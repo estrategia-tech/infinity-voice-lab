@@ -16,7 +16,7 @@ test("before deadline cannot hangup or release",async()=>{
 });
 test("expired but provider disabled retains reservation",async()=>{
  let releases=0;const ledgerStub={fetch:async()=>{releases++;return Response.json({released:true})}};
- const x=await expireBoundCall({binding,now:reservation.expiresAt,ledgerStub});
+ const x=await expireBoundCall({binding,now:reservation.expiresAt,ledgerStub,claimId:"synthetic-claim-0123456789"});
  assert.equal(x.status,403);assert.equal(releases,0);
 });
 test("expired mock provider acknowledgement releases",async()=>{
