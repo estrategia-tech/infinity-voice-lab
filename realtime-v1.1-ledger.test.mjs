@@ -170,5 +170,6 @@ test("atomic termination claim rejects duplicates and requires claim for release
  assert.equal(aborted.status,200);
  assert.equal((await post("/internal/claim-termination",binding)).status,409);
  assert.equal((await post("/internal/reserve")).status,429);
- assert.equal((await post("/internal/release",{...binding,claimId:claim.body.claimId,providerAcknowledged:true})).status,200);
+ assert.equal((await post("/internal/release",{...binding,claimId:claim.body.claimId,providerAcknowledged:true})).status,409);
+ assert.equal((await post("/internal/reserve")).status,429);
 });
