@@ -23,7 +23,7 @@ export default {
    return Response.json(result,{status:result.status||500});
   }
   // Test-only route; never deploy this harness publicly.
-  if(!["/__local/reserve","/__local/release","/__local/bind","/__local/status"].includes(url.pathname) || request.method!=="POST")
+  if(!["/__local/reserve","/__local/release","/__local/bind","/__local/status","/__local/claim-termination","/__local/abort-termination"].includes(url.pathname) || request.method!=="POST")
    return Response.json({error:"not_found"},{status:404});
   if(request.headers.get("x-local-test")!=="infinity-voice-v11")
    return Response.json({error:"forbidden"},{status:403});
@@ -33,7 +33,7 @@ export default {
   const headers={"Content-Type":"application/json"};
   // The harness intentionally does not forward arbitrary client credentials.
   // Only the explicit local test flag can request a server-side capability.
-  if(operation==="release" && request.headers.get("x-local-authorized-release")==="yes")
+  if(["release","claim-termination","abort-termination"].includes(operation) && request.headers.get("x-local-authorized-release")==="yes")
    headers["x-internal-release-token"]=releaseToken;
   return stub.fetch(new Request("https://internal.invalid/internal/"+operation,{
    method:"POST",headers,body:operation==="reserve"?undefined:await request.text()
