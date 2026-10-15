@@ -56,7 +56,7 @@ test("provider failure never releases",async()=>{
 test("disabled provider does not hangup even after preflight",async()=>{
  const h=harness();
  const r=await safeTerminateBoundCall({...h.options,providerEnabled:false});
- assert.equal(r.status,403);assert.equal(h.hangups,0);assert.equal(h.releases,0);
+ assert.equal(r.status,403);assert.equal(h.hangups,0);assert.equal(h.releases,0);assert.equal(h.claims,0);
 });
 
 test("atomic claim is required before hangup and refuses concurrent termination",async()=>{
@@ -71,4 +71,13 @@ test("atomic claim is required before hangup and refuses concurrent termination"
   apiKey:"synthetic-provider-key-0123456789",providerEnabled:true,
   transport:async()=>{calls++;return {ok:true}}});
  assert.equal(result.status,409);assert.equal(calls,0);
+});
+
+test("missing provider configuration cannot consume exclusive claim",async()=>{
+ const h=harness();
+ const r=await safeTerminateBoundCall({...h.options,transport:undefined});
+ assert.equal(r.error,"provider_not_configured");
+ assert.equal(h.claims,0);
+ assert.equal(h.hangups,0);
+ assert.equal(h.releases,0);
 });
