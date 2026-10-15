@@ -21,4 +21,6 @@ jobs:
           node --check realtime-v1.2-session-engine.test.mjs
           node --check realtime-v1.2-event-queue.mjs
           node --check realtime-v1.2-event-queue.test.mjs
-          node --test realtime-v1.2-session-engine.test.mjs realtime-v1.2-event-queue.test.mjs
+          node --check realtime-v1.2-audio-contract.mjs
+          node --check realtime-v1.2-audio-contract.test.mjs
+          node --test realtime-v1.2-session-engine.test.mjs realtime-v1.2-event-queue.test.mjs realtime-v1.2-audio-contract.test.mjs
