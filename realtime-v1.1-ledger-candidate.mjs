@@ -29,7 +29,7 @@ export class LabSessionLedger {
       const now=Date.now();
       return Response.json({reservations:Object.entries(sessions).map(([reservationId,session])=>({
         reservationId,callId:session.callId??null,expiresAt:session.expiresAt,
-        expired:session.expiresAt<=now,status:session.status??"unbound"
+        expired:session.expiresAt<=now,status:session.status??"unbound",terminationClaimed:!!session.terminationClaim
       }))});
     }
     if(url.pathname==="/internal/bind"){
