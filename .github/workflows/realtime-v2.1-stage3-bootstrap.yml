@@ -9,6 +9,7 @@ on:
       - 'wrangler.realtime-v21-stage3.jsonc'
       - 'docs/realtime-v2.1-stage3-*'
       - '.github/workflows/realtime-v2.1-stage3-bootstrap.yml'
+      - '.github/workflows/realtime-v2.1-stage3-deploy.yml'
   workflow_dispatch:
 
 permissions:
@@ -64,12 +65,38 @@ jobs:
           NODE
 
       - name: Reject committed credential material
-        shell: bash
         run: |
-          set -euo pipefail
-          ! grep -RInE --exclude='*.test.mjs' --exclude='*.md' \
-            '(sk-[A-Za-z0-9_-]{20,}|whsec_[A-Za-z0-9_+/=-]{20,}|KEY-----|TELNYX_API_KEY\s*[:=]\s*["'"'][^$])' \
-            realtime-v2.1-* wrangler.realtime-v21-stage3.jsonc
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import { execFileSync } from 'node:child_process';
+
+          const files = execFileSync('git', ['ls-files'], { encoding: 'utf8' })
+            .trim()
+            .split('\n')
+            .filter(Boolean)
+            .filter((file) => !file.endsWith('.md'))
+            .filter((file) => !file.endsWith('.test.mjs'));
+
+          const forbidden = [
+            /sk-[A-Za-z0-9_-]{20,}/,
+            /whsec_[A-Za-z0-9_+/=-]{20,}/,
+            /-----BEGIN [A-Z ]*PRIVATE KEY-----/,
+            /TELNYX_API_KEY\s*[:=]\s*["'][A-Za-z0-9_-]{10,}["']/,
+          ];
+
+          const findings = [];
+          for (const file of files) {
+            let text;
+            try { text = fs.readFileSync(file, 'utf8'); } catch { continue; }
+            if (forbidden.some((pattern) => pattern.test(text))) findings.push(file);
+          }
+
+          if (findings.length) {
+            console.error(`Credential-like material found in: ${findings.join(', ')}`);
+            process.exit(1);
+          }
+          console.log('PASS: no committed credential material detected');
+          NODE
 
       - name: Install isolated Wrangler
         run: npm install --no-save --no-package-lock wrangler@4
