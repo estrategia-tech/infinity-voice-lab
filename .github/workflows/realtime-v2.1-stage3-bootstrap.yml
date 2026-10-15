@@ -1,0 +1,78 @@
+name: Infinity Voice v2.1 Stage3 Bootstrap Gate
+
+on:
+  push:
+    branches: [lab/realtime-v1-1-candidate]
+    paths:
+      - 'realtime-v2.1-stage3-*'
+      - 'realtime-v2.1-openai-webhook-security*'
+      - 'wrangler.realtime-v21-stage3.jsonc'
+      - 'docs/realtime-v2.1-stage3-*'
+      - '.github/workflows/realtime-v2.1-stage3-bootstrap.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  stage3-bootstrap:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout authorized laboratory branch
+        uses: actions/checkout@v4
+        with:
+          ref: lab/realtime-v1-1-candidate
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Syntax checks
+        run: |
+          node --check realtime-v2.1-stage3-preflight.mjs
+          node --check realtime-v2.1-openai-webhook-security.mjs
+          node --check realtime-v2.1-stage3-worker.mjs
+
+      - name: Stage3 policy and security tests
+        run: |
+          node --test realtime-v2.1-stage3-preflight.test.mjs
+          node --test realtime-v2.1-openai-webhook-security.test.mjs
+          node --test realtime-v2.1-stage3-worker.test.mjs
+
+      - name: Preserve v2.1 pre-live gate
+        run: node --test realtime-v2.1-prelive-gate.test.mjs
+
+      - name: Preserve v2.0 acceptance
+        run: node --test realtime-v2.0-stage5-acceptance.test.mjs
+
+      - name: Verify fail-closed deployment defaults
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const c = JSON.parse(fs.readFileSync('wrangler.realtime-v21-stage3.jsonc', 'utf8'));
+          if (c.name !== 'infinity-voice-v21-stage3-lab') throw new Error('unexpected-worker-name');
+          if (c.main !== 'realtime-v2.1-stage3-worker.mjs') throw new Error('unexpected-worker-entrypoint');
+          if (c.vars?.LIVE_ENABLED !== 'false') throw new Error('live-must-default-disabled');
+          if (c.vars?.EMERGENCY_STOP !== 'true') throw new Error('emergency-stop-must-default-active');
+          if (!c.durable_objects?.bindings?.some(b => b.name === 'STAGE3_CONTROL' && b.class_name === 'Stage3Control')) {
+            throw new Error('stage3-control-binding-required');
+          }
+          console.log('PASS: Stage3 deployment defaults are fail-closed');
+          NODE
+
+      - name: Reject committed credential material
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -RInE --exclude='*.test.mjs' --exclude='*.md' \
+            '(sk-[A-Za-z0-9_-]{20,}|whsec_[A-Za-z0-9_+/=-]{20,}|KEY-----|TELNYX_API_KEY\s*[:=]\s*["'"'][^$])' \
+            realtime-v2.1-* wrangler.realtime-v21-stage3.jsonc
+
+      - name: Install isolated Wrangler
+        run: npm install --no-save --no-package-lock wrangler@4
+
+      - name: Validate Cloudflare bundle without deployment
+        run: npx wrangler deploy --config wrangler.realtime-v21-stage3.jsonc --dry-run
