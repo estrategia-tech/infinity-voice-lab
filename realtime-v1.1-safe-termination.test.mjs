@@ -9,6 +9,15 @@ function harness({storedCallId=callId,status="pending",available=true,ack=true}=
   if(new URL(request.url).pathname==="/internal/status")
    return available?Response.json({reservations:[{reservationId,callId:storedCallId,status}]}):
     Response.json({error:"unavailable"},{status:503});
+  const path=new URL(request.url).pathname;
+  if(path==="/internal/claim-termination"){
+   claims++;
+   return Response.json({claimed:true,claimId:"claim-synthetic-123"});
+  }
+  if(path==="/internal/abort-termination"){
+   aborts++;
+   return Response.json({aborted:true,requiresReview:true});
+  }
   releases++;
   if(request.headers.get("x-internal-release-token")!==token)
    return Response.json({error:"release_unauthorized"},{status:403});
