@@ -144,3 +144,30 @@ test("expired unbound reservation cannot be bound or silently reused",async()=>{
  assert.equal((await bind.json()).error,"reservation_expired");
  assert.equal((await post("/internal/reserve")).status,429);
 });
+
+test("atomic termination claim rejects duplicates and requires claim for release",async()=>{
+ const map=new Map(),secret="synthetic-internal-release-token-0123456789";
+ const storage={get:async k=>map.get(k),put:async(k,v)=>map.set(k,structuredClone(v)),
+  transaction:async fn=>fn(storage),setAlarm:async()=>{}};
+ const ledger=new LabSessionLedger({storage},{INTERNAL_RELEASE_TOKEN:secret});
+ const post=async(path,data,auth=true)=>{
+  const r=await ledger.fetch(new Request("https://internal.invalid"+path,{method:"POST",
+   headers:{"content-type":"application/json",...(auth?{"x-internal-release-token":secret}:{})},
+   body:JSON.stringify(data??{})}));
+  return {status:r.status,body:await r.json()};
+ };
+ const first=(await post("/internal/reserve")).body;
+ const binding={reservationId:first.reservationId,callId:"rtc_12345678"};
+ assert.equal((await post("/internal/bind",binding)).status,200);
+ assert.equal((await post("/internal/claim-termination",binding,false)).status,403);
+ const claim=await post("/internal/claim-termination",binding);
+ assert.equal(claim.status,200);
+ assert.equal((await post("/internal/claim-termination",binding)).status,409);
+ assert.equal((await post("/internal/release",{...binding,providerAcknowledged:true})).status,409);
+ assert.equal((await post("/internal/release",{...binding,claimId:"wrong",providerAcknowledged:true})).status,409);
+ const aborted=await post("/internal/abort-termination",{...binding,claimId:claim.body.claimId});
+ assert.equal(aborted.status,200);
+ assert.equal((await post("/internal/claim-termination",binding)).status,409);
+ assert.equal((await post("/internal/reserve")).status,429);
+ assert.equal((await post("/internal/release",{...binding,claimId:claim.body.claimId,providerAcknowledged:true})).status,200);
+});
