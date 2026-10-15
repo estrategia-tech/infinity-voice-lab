@@ -28,6 +28,10 @@ function validSessionId(value) {
   return typeof value === "string" && /^live_[A-Za-z0-9_-]{3,200}$/.test(value);
 }
 
+function presentSecret(value) {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
 function openAiHeaders(env) {
   const headers = {
     authorization: `Bearer ${env.OPENAI_API_KEY}`,
@@ -157,6 +161,33 @@ export function createStage3Worker({ fetchImpl = fetch, nowMs = () => Date.now()
           static_emergency_stop: env.EMERGENCY_STOP !== "false",
           record_audio: false,
           customer_traffic: false,
+        });
+      }
+
+      if (url.pathname === "/readiness" && request.method === "GET") {
+        const allowlist = parseInternalAllowlist(env.INTERNAL_CALLER_ALLOWLIST);
+        let dynamicEmergencyStop = "unknown";
+        try {
+          dynamicEmergencyStop = (await getDynamicEmergencyStop(env)) ? "active" : "cleared";
+        } catch {
+          dynamicEmergencyStop = "unknown";
+        }
+        const secretsReady = [
+          env.OPENAI_API_KEY,
+          env.OPENAI_WEBHOOK_SECRET,
+          env.INTERNAL_CALLER_ALLOWLIST,
+          env.LAB_ACCESS_TOKEN,
+        ].every(presentSecret) && allowlist.length > 0;
+        return json({
+          service: "infinity-voice-stage3-lab",
+          version: VERSION,
+          configuration_ready: secretsReady,
+          internal_allowlist_entries: allowlist.length,
+          live_enabled: env.LIVE_ENABLED === "true",
+          static_emergency_stop: env.EMERGENCY_STOP !== "false",
+          dynamic_emergency_stop: dynamicEmergencyStop,
+          provider_call_performed: false,
+          secret_values_exposed: false,
         });
       }
 
