@@ -105,8 +105,18 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          HEALTH_JSON="$(curl --fail --silent --show-error \
-            https://infinity-voice-v21-stage3-lab.estrategia-a81.workers.dev/health)"
+          HEALTH_URL='https://infinity-voice-v21-stage3-lab.estrategia-a81.workers.dev/health'
+          HEALTH_JSON=''
+          for attempt in $(seq 1 10); do
+            HTTP_CODE="$(curl --silent --show-error --output /tmp/stage3-health.json --write-out '%{http_code}' "$HEALTH_URL" || true)"
+            if [ "$HTTP_CODE" = '200' ]; then
+              HEALTH_JSON="$(cat /tmp/stage3-health.json)"
+              break
+            fi
+            echo "Health endpoint not ready yet (attempt $attempt/10, HTTP $HTTP_CODE)"
+            sleep 3
+          done
+          test -n "$HEALTH_JSON" || { echo 'Stage3 health endpoint did not become available'; exit 1; }
           export HEALTH_JSON
           node --input-type=module <<'NODE'
           const d = JSON.parse(process.env.HEALTH_JSON);
