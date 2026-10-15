@@ -14,7 +14,7 @@ function approved(overrides = {}) {
   return {
     liveAuthorization: true,
     ownerApproval: true,
-    legalPrivacyReview: true,
+    privacyOperationalReview: true,
     providerAccountReady: true,
     openAiOutboundSipEnabled: true,
     secretStoreReady: true,
@@ -77,11 +77,11 @@ test("external prospect and cold-call targets are denied even with other approva
   assert.ok(result.reasons.includes("cold-calls-forbidden"));
 });
 
-test("owner approval, legal review, secret store, kill switch and monitoring are mandatory", () => {
+test("owner approval, operational privacy review, secret store, kill switch and monitoring are mandatory", () => {
   const result = evaluateLivePilotAdmission(
     approved({
       ownerApproval: false,
-      legalPrivacyReview: false,
+      privacyOperationalReview: false,
       secretStoreReady: false,
       killSwitchReady: false,
       monitoringReady: false,
@@ -89,7 +89,7 @@ test("owner approval, legal review, secret store, kill switch and monitoring are
   );
   assert.equal(result.allowed, false);
   assert.ok(result.reasons.includes("owner-approval-required"));
-  assert.ok(result.reasons.includes("legal-privacy-review-required"));
+  assert.ok(result.reasons.includes("privacy-operational-review-required"));
   assert.ok(result.reasons.includes("secret-store-not-ready"));
   assert.ok(result.reasons.includes("kill-switch-not-ready"));
   assert.ok(result.reasons.includes("monitoring-not-ready"));
