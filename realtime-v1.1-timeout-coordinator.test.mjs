@@ -22,12 +22,19 @@ test("expired but provider disabled retains reservation",async()=>{
 test("expired mock provider acknowledgement releases",async()=>{
  let calls=0;const ledgerStub={fetch:async()=>{calls++;return Response.json({released:true})}};
  const x=await expireBoundCall({binding,now:reservation.expiresAt,providerEnabled:true,apiKey,
-  transport:async()=>{calls++;return {ok:true,status:200}},ledgerStub});
+  transport:async()=>{calls++;return {ok:true,status:200}},ledgerStub,claimId:"synthetic-claim-0123456789"});
  assert.equal(x.ok,true);assert.equal(calls,2);
 });
 test("expired provider error cannot release",async()=>{
  let releases=0;const ledgerStub={fetch:async()=>{releases++;return Response.json({released:true})}};
  const x=await expireBoundCall({binding,now:reservation.expiresAt,providerEnabled:true,apiKey,
-  transport:async()=>({ok:false,status:500}),ledgerStub});
+  transport:async()=>({ok:false,status:500}),ledgerStub,claimId:"synthetic-claim-0123456789"});
  assert.equal(x.ok,false);assert.equal(releases,0);
+});
+
+test("expired binding alone never authorizes provider hangup",async()=>{
+ let calls=0;const ledgerStub={fetch:async()=>{calls++;return Response.json({released:true})}};
+ const x=await expireBoundCall({binding,now:reservation.expiresAt,providerEnabled:true,apiKey,
+  transport:async()=>{calls++;return {ok:true}},ledgerStub});
+ assert.equal(x.error,"termination_claim_required");assert.equal(calls,0);
 });
