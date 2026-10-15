@@ -49,7 +49,7 @@ test("default pre-live state is hard fail-closed with zero spend", () => {
   assert.equal(result.allowed, false);
   assert.ok(result.reasons.includes("live-authorization-required"));
   assert.ok(result.reasons.includes("positive-approved-budget-required"));
-  assert.ok(result.reasons.includes("destination-not-allowlisted"));
+  assert.ok(result.reasons.includes("allowlist-required"));
 });
 
 test("architecture invariant locks the recommended pre-live route", () => {
