@@ -40,27 +40,33 @@ Decisión técnica actual: Telnyx + OpenAI GPT-Live (`gpt-live-1`) mediante SIP 
 
 **Etapa 3: 0/20%.**
 
-### Bootstrap técnico de Etapa 3 — PREPARADO
+### Bootstrap técnico de Etapa 3 — PREPARADO Y CONTROL PLANE DESPLEGADO
 
-Sin sumar porcentaje de integración real, ya quedan preparados en la rama:
+Sin sumar todavía porcentaje de integración real, ya quedan preparados y/o validados:
 
-- registro formal de autorización y límites;
-- preflight de evidencia real para inbound/outbound;
-- verificación criptográfica del webhook OpenAI;
-- parsing de caller E.164 y allowlist;
-- Worker candidato de Stage 3 con fail-closed admission;
-- Durable Object para claim/deduplicación y emergency stop dinámico;
-- estado inicial `LIVE_ENABLED=false` + `EMERGENCY_STOP=true`;
-- Wrangler config aislado `infinity-voice-v21-stage3-lab`;
-- CI de bootstrap con pruebas y dry-run;
-- workflow manual de despliegue fail-closed;
-- runbook de Telnyx/OpenAI/Cloudflare sin secretos en Git.
+- registro formal de autorización y límites — **VALIDADO**;
+- preflight de evidencia real para inbound/outbound — **PROBADO EN CI**;
+- verificación criptográfica del webhook OpenAI — **PROBADO EN CI**;
+- parsing de caller E.164 y allowlist — **PROBADO EN CI**;
+- Worker candidato de Stage 3 con fail-closed admission — **PROBADO EN CI**;
+- Durable Object para claim/deduplicación y emergency stop dinámico — **PROBADO EN CI**;
+- Wrangler config aislado `infinity-voice-v21-stage3-lab` — **VALIDADO**;
+- CI de bootstrap con pruebas y dry-run — **VALIDADO**;
+- control plane real en Cloudflare — **DESPLEGADO Y VALIDADO FAIL-CLOSED**;
+- `LIVE_ENABLED=false` en el Worker real — **VALIDADO**;
+- `EMERGENCY_STOP=true` en el Worker real — **VALIDADO**;
+- endpoint `/health` real accesible — **VALIDADO**;
+- runbook de Telnyx/OpenAI/Cloudflare sin secretos en Git — **PREPARADO**.
 
-La primera ruta real será inbound:
+Evidencia de despliegue: `docs/realtime-v2.1-stage3-cloudflare-validation.md`.
+
+La primera ruta real de telefonía será inbound:
 
 `teléfono interno allowlisted → DID Telnyx → FQDN SIP TLS/SRTP → OpenAI GPT-Live → control plane`.
 
 El outbound queda detrás de evidencia adicional de compatibilidad y no se usa como primer handshake.
+
+El control plane desplegado todavía no contiene secretos OpenAI/Telnyx, no acepta llamadas y no representa por sí mismo integración de telefonía.
 
 ## Etapa 4 — Piloto interno controlado (0/20%)
 
@@ -82,13 +88,15 @@ El outbound queda detrás de evidencia adicional de compatibilidad y no se usa c
 
 - Etapa 1: **20/20%**
 - Etapa 2: **20/20%**
-- Etapa 3: **0/20% real** — bootstrap técnico preparado; autorización recibida.
+- Etapa 3: **0/20% real** — bootstrap técnico preparado, autorización recibida y control plane Cloudflare desplegado fail-closed.
 - Etapas 4–5: **0/40%**
 - **Global verificado: 40%**
 
 ## Frontera actual
 
-Ya no falta autorización de Etapa 3. Lo que falta para ganar el siguiente 4% es evidencia real de activos: cuenta Telnyx utilizable, DID voice-capable de laboratorio, conexión SIP configurada y proyecto OpenAI con GPT-Live SIP. La compra/configuración debe mantenerse dentro de USD 20 acumulados.
+Ya no falta autorización de Etapa 3 y el control plane real ya está desplegado de forma segura. Lo que falta para ganar el siguiente 4% es evidencia real de activos de proveedor: cuenta Telnyx utilizable, DID voice-capable de laboratorio, conexión SIP configurada y proyecto OpenAI con GPT-Live SIP. La compra/configuración debe mantenerse dentro de USD 20 acumulados.
+
+La siguiente intervención humana debe ocurrir en los paneles de Telnyx/OpenAI para crear o verificar esos activos. Los secretos resultantes deben cargarse directamente en Cloudflare Secret Manager; no deben pegarse en chat ni almacenarse en Git.
 
 El número interno que participará en la prueba debe ser confirmado explícitamente por el propietario y cargado directamente como secret `INTERNAL_CALLER_ALLOWLIST`; nunca debe inferirse ni escribirse en el repositorio.
 
